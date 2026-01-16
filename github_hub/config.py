@@ -120,10 +120,17 @@ CATEGORIES = {
     }
 }
 
+import os
+
 # ============================================================
 # 数据库配置
 # ============================================================
-DATABASE_PATH = "data/projects.db"
+if os.environ.get('VERCEL'):
+    DATABASE_PATH = "/tmp/projects.db"
+    # Create the directory if needed (though /tmp usually exists)
+    print(f"Running on Vercel, using DB path: {DATABASE_PATH}")
+else:
+    DATABASE_PATH = "data/projects.db"
 
 # ============================================================
 # 扫描配置
