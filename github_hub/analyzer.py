@@ -48,8 +48,10 @@ Topics: {', '.join(project.get('topics', []))}
         try:
             if not self.client:
                 return self._default_analysis(project)
+            
+            current_model = MODELS["analyzer"] # Use the high-quality analyzer model
             response = self.client.chat.completions.create(
-                model=MODELS["classifier"],  # 使用快速模型
+                model=current_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=1000
@@ -62,7 +64,9 @@ Topics: {', '.join(project.get('topics', []))}
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0]
             
-            return json.loads(content)
+            result = json.loads(content)
+            result['model_name'] = current_model # Include the model name for tracking
+            return result
             
         except json.JSONDecodeError as e:
             print(f"[Analyzer] JSON parse error for {project['name']}: {e}")
@@ -94,7 +98,7 @@ Topics: {', '.join(project.get('topics', []))}
 """
         try:
             response = self.client.chat.completions.create(
-                model=MODELS["classifier"], # Use fast model
+                model=MODELS["analyzer"], # Use higher quality model for RAG descriptions
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=300

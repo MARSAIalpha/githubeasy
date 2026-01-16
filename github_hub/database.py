@@ -89,6 +89,7 @@ class Database:
             "ai_use_cases": analysis.get('use_cases', []),
             "ai_difficulty": analysis.get('difficulty'),
             "ai_quick_start": analysis.get('quick_start'),
+            "ai_model_name": analysis.get('model_name'),  # Store which model did the analysis
             "last_analyzed": now
         }
         
@@ -155,8 +156,10 @@ class Database:
         total_response = self.supabase.table("projects").select("id", count="exact").execute()
         total = total_response.count or 0
         
-        # Analyzed projects
-        analyzed_response = self.supabase.table("projects").select("id", count="exact").not_.is_("ai_summary", "null").execute()
+        # Analyzed projects (Count only those analyzed by 120B model)
+        # We case-insensitive check for '120b' in ai_model_name
+        analyzed_response = self.supabase.table("projects").select("id", count="exact")\
+            .ilike("ai_model_name", "%120b%").execute()
         analyzed = analyzed_response.count or 0
         
         # Categories

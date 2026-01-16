@@ -590,17 +590,16 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* Keep Header Visible */
-            background: var(--bg-secondary);
-            border-top: 2px solid var(--primary);
+            background: rgba(18, 18, 21, 0.95);
+            backdrop-filter: blur(8px);
+            border-top: 1px solid var(--primary);
             transform: translateY(100%);
-            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-            /* Smooth eased slide */
-            padding: 1rem;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 1.25rem;
             display: flex;
             flex-direction: column;
             z-index: 5;
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .project-card:hover .card-overlay {
@@ -1419,7 +1418,10 @@
             const remoteTag = isRemote ? `<span style="background:#2ea043; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em; margin-left:8px; vertical-align: middle;">Live</span>` : '';
 
             // Click Actions
-            const isAnalyzed = !!p.ai_summary;
+            // Only consider analyzed if done by the 120B model (or specifically marked as high quality)
+            const isHighQualityAnalysis = p.ai_model_name && p.ai_model_name.toLowerCase().includes('120b');
+            const isAnalyzed = !!p.ai_summary && isHighQualityAnalysis;
+
             const cardClickAction = isAnalyzed
                 ? `onclick="showTutorial('${p.id}', '${(p.name || '').replace(/'/g, "\\'")}')"`
                 : `onclick="window.open('${p.url}', '_blank')"`;
@@ -1434,7 +1436,7 @@
             return `
                 <div class="project-card ${clickableClass}" ${cardClickAction}>
                     <button class="delete-btn" onclick="event.stopPropagation(); deleteProject('${p.id}')" title="Delete">✕</button>
-                    ${p.ai_summary ? '<div class="analyzed-badge">✓ AI</div>' : ''}
+                    ${isAnalyzed ? '<div class="analyzed-badge">✓ AI 120B</div>' : ''}
                     
                     <div class="project-header">
                         <a href="${p.url}" target="_blank" class="project-name" onclick="event.stopPropagation()">${p.name}</a>
@@ -1455,19 +1457,17 @@
                         <a href="${p.url}" target="_blank" onclick="event.stopPropagation()" style="color:#58a6ff; text-decoration:none; display:flex; align-items:center; gap:4px" title="Open on GitHub">🔗 GitHub</a>
                     </div>
 
-                     ${p.ai_rag_summary && !isRemote ? `
-                        <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">
-                            <div style="font-size:0.8rem;background:var(--bg-secondary);padding:0.5rem;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                                💡 ${p.ai_rag_summary}
-                            </div>
+                    <!-- Detail Overlay on Hover -->
+                    <div class="card-overlay">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--primary); margin-bottom: 0.5rem; font-weight: 600;">Details / Analysis</div>
+                        <div class="card-overlay-content">
+                            ${p.ai_rag_summary || p.ai_summary || p.description || 'No detailed analysis available.'}
                         </div>
-                    ` : ''}
-
-                    ${isRemote ? `
-                        <button class="btn btn-primary" onclick="event.stopPropagation(); saveProject('${p.url}', this)" style="margin-top:1rem; width:100%; justify-content:center;">⬇️ Save to Library</button>
-                    ` : `
-                        <button class="btn btn-secondary" style="margin-top:0.75rem;font-size:0.75rem;width:100%" onclick="event.stopPropagation(); analyzeProject('${p.id}')">🤖 AI Analyze</button>
-                    `}
+                        ${isAnalyzed ?
+                    `<div style="font-size:0.7rem; color: #3fb950; display:flex; align-items:center; gap:4px">✨ 120B Advanced Analysis Available</div>` :
+                    `<div style="font-size:0.7rem; color: var(--text-secondary)">Basic Repo Info</div>`
+                }
+                    </div>
                 </div>
             `;
         }

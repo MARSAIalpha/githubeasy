@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS projects (
     recent_stars_growth INTEGER DEFAULT 0,
     ai_rag_summary TEXT,
     ai_visual_summary TEXT,
-    screenshot TEXT
+    screenshot TEXT,
+    ai_model_name TEXT
 );
 
 -- Scan history table
