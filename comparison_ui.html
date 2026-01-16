@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索引擎对比 | Local AI RAG</title>
+    <style>
+        :root {
+            --bg-dark: #0f0f1a;
+            --bg-card: #1a1a2e;
+            --accent-ddg: #de5833;
+            --accent-github: #238636;
+            --accent-searxng: #3b82f6;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --border: #27272a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--accent-ddg), var(--accent-github), var(--accent-searxng));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 1rem;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-searxng);
+        }
+
+        .search-btn {
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-ddg), var(--accent-searxng));
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 1600px) {
+            .results-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 1000px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .result-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            min-height: 400px;
+        }
+
+        .result-card.ddg {
+            border-top: 4px solid var(--accent-ddg);
+        }
+
+        .result-card.github {
+            border-top: 4px solid var(--accent-github);
+        }
+
+        .result-card.searxng {
+            border-top: 4px solid var(--accent-searxng);
+        }
+
+        .result-card.bingnews {
+            border-top: 4px solid #00a4ef;
+        }
+
+        .result-card.hackernews {
+            border-top: 4px solid #ff6600;
+        }
+
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .engine-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .ddg .engine-icon {
+            background: var(--accent-ddg);
+        }
+
+        .github .engine-icon {
+            background: var(--accent-github);
+        }
+
+        .searxng .engine-icon {
+            background: var(--accent-searxng);
+        }
+
+        .bingnews .engine-icon {
+            background: #00a4ef;
+        }
+
+        .hackernews .engine-icon {
+            background: #ff6600;
+        }
+
+
+        .engine-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .status-badge {
+            margin-left: auto;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            background: var(--border);
+        }
+
+        .status-badge.loading {
+            background: #eab308;
+            color: #000;
+        }
+
+        .status-badge.done {
+            background: var(--accent-github);
+        }
+
+        .status-badge.error {
+            background: #ef4444;
+        }
+
+        .sources-section {
+            margin-bottom: 1rem;
+        }
+
+        .sources-title {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .source-item {
+            font-size: 0.85rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+
+        .source-item a {
+            color: var(--accent-searxng);
+            text-decoration: none;
+        }
+
+        .source-item a:hover {
+            text-decoration: underline;
+        }
+
+        .ai-response {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .ai-response.loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-searxng);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 3rem;
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Log Panel Styles */
+        .log-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: #0a0a12;
+            border-top: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            z-index: 1000;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: #151520;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .log-header h3 {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .log-toggle {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem 1rem;
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .log-time {
+            color: #666;
+            min-width: 60px;
+        }
+
+        .log-engine {
+            min-width: 80px;
+            font-weight: 600;
+        }
+
+        .log-engine.ddg {
+            color: var(--accent-ddg);
+        }
+
+        .log-engine.github {
+            color: var(--accent-github);
+        }
+
+        .log-engine.searxng {
+            color: var(--accent-searxng);
+        }
+
+        .log-engine.bingnews {
+            color: #00a4ef;
+        }
+
+        .log-engine.hackernews {
+            color: #ff6600;
+        }
+
+        .log-engine.system {
+            color: #a855f7;
+        }
+
+        .log-message {
+            color: var(--text-primary);
+        }
+
+        .log-message.success {
+            color: #22c55e;
+        }
+
+        .log-message.warning {
+            color: #eab308;
+        }
+
+        .log-message.error {
+            color: #ef4444;
+        }
+
+        .log-panel.collapsed {
+            height: 40px;
+        }
+
+        .log-panel.collapsed .log-content {
+            display: none;
+        }
+
+        /* Adjust main content for log panel */
+        .container {
+            padding-bottom: 220px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Multi-Engine Search Comparison</h1>
+            <p class="subtitle">对比 DuckDuckGo、GitHub、SearXNG、Bing News、Hacker News 的搜索结果与 AI 回答</p>
+        </header>
+
+        <div class="search-box">
+            <input type="text" class="search-input" id="queryInput" placeholder="输入搜索问题，例如：best RAG framework 2024" />
+            <button class="search-btn" id="searchBtn" onclick="runComparison()">🚀 对比搜索</button>
+        </div>
+
+        <div class="results-grid" id="resultsGrid">
+            <div class="empty-state">
+                <div class="icon">🔍</div>
+                <p>输入问题后点击搜索，将同时使用 5 个搜索引擎获取结果并生成 AI 回答</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-time Log Panel -->
+    <div class="log-panel" id="logPanel">
+        <div class="log-header">
+            <h3>📋 实时日志</h3>
+            <button class="log-toggle" onclick="toggleLogPanel()">收起</button>
+        </div>
+        <div class="log-content" id="logContent">
+            <div class="log-entry">
+                <span class="log-time">--:--:--</span>
+                <span class="log-engine system">System</span>
+                <span class="log-message">等待搜索...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const queryInput = document.getElementById('queryInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const logContent = document.getElementById('logContent');
+        const logPanel = document.getElementById('logPanel');
+
+        // SSE for real-time logs
+        let eventSource = null;
+
+        function startLogStream() {
+            if (eventSource) eventSource.close();
+
+            eventSource = new EventSource('/api/logs');
+            eventSource.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                if (data.ping) return; // Ignore keepalive
+
+                const engineClass = data.engine.toLowerCase().replace(/\s+/g, '');
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.innerHTML = `
+                    <span class="log-time">${data.time}</span>
+                    <span class="log-engine ${engineClass}">${data.engine}</span>
+                    <span class="log-message ${data.level}">${data.message}</span>
+                `;
+                logContent.appendChild(entry);
+                logContent.scrollTop = logContent.scrollHeight;
+            };
+
+            eventSource.onerror = function () {
+                console.log('SSE connection lost, retrying...');
+                setTimeout(startLogStream, 3000);
+            };
+        }
+
+        function toggleLogPanel() {
+            logPanel.classList.toggle('collapsed');
+            const btn = logPanel.querySelector('.log-toggle');
+            btn.textContent = logPanel.classList.contains('collapsed') ? '展开' : '收起';
+        }
+
+        function clearLogs() {
+            logContent.innerHTML = '';
+        }
+
+        queryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') runComparison();
+        });
+
+        function createCard(engine, displayName, icon) {
+            return `
+                <div class="result-card ${engine}">
+                    <div class="card-header">
+                        <div class="engine-icon">${icon}</div>
+                        <span class="engine-name">${displayName}</span>
+                        <span class="status-badge loading" id="status-${engine}">搜索中...</span>
+                    </div>
+                    <div class="sources-section" id="sources-${engine}">
+                        <div class="sources-title">搜索结果</div>
+                        <div class="source-item">加载中...</div>
+                    </div>
+                    <div class="ai-response loading" id="response-${engine}">
+                        <div class="spinner"></div>
+                        <span>AI 正在生成回答...</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function runComparison() {
+            const query = queryInput.value.trim();
+            if (!query) return;
+
+            clearLogs();
+            searchBtn.disabled = true;
+            searchBtn.textContent = '⏳ 搜索中...';
+
+            // Initialize cards for all 5 engines
+            resultsGrid.innerHTML =
+                createCard('ddg', 'DuckDuckGo', '🦆') +
+                createCard('github', 'GitHub', '🐙') +
+                createCard('searxng', 'SearXNG', '🔎') +
+                createCard('bingnews', 'Bing News', '📰') +
+                createCard('hackernews', 'Hacker News', '🔥');
+
+            try {
+                const response = await fetch('/api/compare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+
+                // Map engine names to card IDs
+                const engineMap = {
+                    'DuckDuckGo': 'ddg',
+                    'GitHub': 'github',
+                    'SearXNG': 'searxng',
+                    'Bing News': 'bingnews',
+                    'Hacker News': 'hackernews'
+                };
+
+                data.responses.forEach(r => {
+                    const engineKey = engineMap[r.engine] || r.engine.toLowerCase();
+                    const statusEl = document.getElementById(`status-${engineKey}`);
+                    const sourcesEl = document.getElementById(`sources-${engineKey}`);
+                    const responseEl = document.getElementById(`response-${engineKey}`);
+
+                    if (statusEl) {
+                        const hasError = r.results && r.results.some(s => s.error);
+                        statusEl.textContent = hasError ? '错误' : '完成';
+                        statusEl.className = hasError ? 'status-badge error' : 'status-badge done';
+                    }
+
+                    if (sourcesEl && r.results) {
+                        const validResults = r.results.filter(s => !s.error);
+                        sourcesEl.innerHTML = `
+                            <div class="sources-title">搜索结果 (${validResults.length})</div>
+                            ${validResults.slice(0, 3).map((s, i) => `
+                                <div class="source-item">
+                                    <strong>${i + 1}.</strong> 
+                                    <a href="${s.url}" target="_blank">${s.title || 'Link'}</a>
+                                    <br><small>${(s.snippet || '').slice(0, 100)}...</small>
+                                </div>
+                            `).join('')}
+                        `;
+                    }
+
+                    if (responseEl) {
+                        responseEl.className = 'ai-response';
+                        responseEl.textContent = r.response || 'No response';
+                    }
+                });
+
+            } catch (error) {
+                resultsGrid.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>Error: ${error.message}</p></div>`;
+            }
+
+            searchBtn.disabled = false;
+            searchBtn.textContent = '🚀 对比搜索';
+        }
+
+        // Start log stream on page load
+        startLogStream();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Hub - 开源项目仪表盘</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #09090b;
+            /* Zinc 950 */
+            --bg-secondary: #18181b;
+            /* Zinc 900 */
+            --bg-card: #27272a;
+            /* Zinc 800 */
+            --text-primary: #f4f4f5;
+            /* Zinc 100 */
+            --text-secondary: #a1a1aa;
+            /* Zinc 400 */
+            --accent: #3b82f6;
+            /* Blue 500 */
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --border: #3f3f46;
+            /* Zinc 700 */
+            --glass: rgba(24, 24, 27, 0.8);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+            /* App-like feel */
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Header */
+        .header {
+            height: 64px;
+            padding: 0 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            background: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(12px);
+            z-index: 50;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex: 1;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+            justify-content: flex-end;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.025em;
+            white-space: nowrap;
+        }
+
+        /* Stats */
+        .header-stats {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 2px;
+        }
+
+        /* Buttons */
+        .btn {
+            height: 36px;
+            padding: 0 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid transparent;
+        }
+
+        .btn-icon {
+            width: 36px;
+            padding: 0;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .btn-primary {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border-color: var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+            border-color: var(--text-secondary);
+        }
+
+        .nav-tab.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* Draggable Window (Modern) */
+        .floating-window {
+            position: fixed;
+            background: rgba(24, 24, 27, 0.9);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+            min-width: 320px;
+            overflow: hidden;
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .floating-window.active {
+            display: flex;
+        }
+
+        /* Modal (Overlay) */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .window-header {
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: grab;
+        }
+
+        .window-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .win-btn {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .win-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .win-close {
+            background: #ef4444;
+        }
+
+        .win-min {
+            background: #f59e0b;
+        }
+
+        /* Specific Windows */
+        #agent-window {
+            top: 80px;
+            right: 24px;
+            width: 360px;
+            max-height: 80vh;
+            display: none;
+            flex-direction: column;
+        }
+
+        #agent-window.active {
+            display: flex;
+        }
+
+        .agent-toolbar {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .agent-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .agent-item:last-child {
+            border-bottom: none;
+        }
+
+        .agent-item.active {
+            background: rgba(63, 185, 80, 0.1);
+        }
+
+        .agent-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .agent-info {
+            flex: 1;
+        }
+
+        .agent-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .agent-status {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        #terminal-window {
+            bottom: 24px;
+            right: 24px;
+            width: 600px;
+            height: 400px;
+            display: none;
+            flex-direction: column;
+        }
+
+        #terminal-window.active {
+            display: flex;
+        }
+
+        .terminal-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: #d1d5db;
+            line-height: 1.5;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            display: flex;
+            gap: 8px;
+            word-break: break-all;
+        }
+
+        .log-time {
+            color: #6b7280;
+            flex-shrink: 0;
+            font-size: 0.75rem;
+        }
+
+        /* Main Layout */
+        .main {
+            display: flex;
+            height: calc(100vh - 64px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border);
+            height: calc(100vh - 64px);
+            padding: 1.5rem 1rem;
+            overflow-y: auto;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            padding: 1.5rem 0;
+            overflow: hidden;
+            border-right: none;
+        }
+
+        .sidebar h3 {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+            padding-left: 0.75rem;
+        }
+
+        .category-item {
+            padding: 0.6rem 0.75rem;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            transition: all 0.15s;
+        }
+
+        .category-item:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .category-item.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .category-count {
+            margin-left: auto;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 99px;
+            color: var(--text-secondary);
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            height: calc(100vh - 64px);
+            background: radial-gradient(circle at top right, #1c1c20 0%, var(--bg-primary) 40%);
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+
+        .project-card {
+            background: rgba(24, 24, 27, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .project-card:hover {
+            border-color: var(--text-secondary);
+            transform: translateY(-2px);
+            background: rgba(39, 39, 42, 0.4);
+        }
+
+        .project-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: block;
+            margin-bottom: 0.2rem;
+        }
+
+        .project-desc {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+            min-height: 2.2em;
+        }
+
+        .project-meta {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            margin-top: auto;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .lang-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        /* Project Tags */
+        .project-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 0.75rem;
+        }
+
+        .tag {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .tag:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+        }
+
+        /* Analyzed Badge */
+        .analyzed-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            letter-spacing: 0.02em;
+        }
+
+        .project-card {
+            position: relative;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.9);
+            border: none;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+            /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        /* Show only in manage mode */
+        body.manage-mode .delete-btn {
+            display: flex;
+        }
+
+        body.manage-mode .project-card {
+            border-style: dashed;
+        }
+
+        /* Slide Up Overlay */
+        .card-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Keep Header Visible */
+            background: var(--bg-secondary);
+            border-top: 2px solid var(--primary);
+            transform: translateY(100%);
+            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            /* Smooth eased slide */
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .project-card:hover .card-overlay {
+            transform: translateY(0);
+        }
+
+        /* Customize scrollbar inside overlay */
+        .card-overlay-content {
+            flex: 1;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+
+        /* Ensure card clipping */
+        .project-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Sticky Modal Header */
+        .modal-content {
+            display: flex !important;
+            flex-direction: column;
+            padding: 0 !important;
+            max-height: 85vh;
+            overflow: hidden;
+            width: 800px;
+            min-height: 500px;
+            transition: all 0.3s ease;
+        }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-card);
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .tutorial-content {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* Hover effect for clickable card */
+        .project-card.clickable {
+            cursor: pointer;
+        }
+
+        .project-card.clickable:hover {
+            border-color: var(--primary);
+        }
+
+        .manage-active {
+            background: rgba(239, 68, 68, 0.2) !important;
+            border-color: #ef4444 !important;
+            color: #ef4444 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-left">
+            <button class="btn btn-secondary btn-icon" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
+            <h1>🚀 GitHub Hub</h1>
+            <!-- Stats moved to Sidebar -->
+            <div class="header-stats" style="display:none"></div>
+            <!-- Progress Bar -->
+            <div id="progress-container" style="display:none; margin-left:1.5rem; width:200px;">
+                <div style="font-size:0.7rem; color:var(--text-secondary); margin-bottom:4px;">
+                    <span id="progress-text">0/0</span> <span id="progress-current" style="color:#3b82f6"></span>
+                </div>
+                <div style="background:var(--bg-card); border-radius:4px; height:6px; overflow:hidden;">
+                    <div id="progress-bar"
+                        style="background:linear-gradient(90deg, #3b82f6, #10b981); height:100%; width:0%; transition:width 0.3s;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-center" style="display: flex; gap: 0.5rem; justify-content: center;">
+            <button class="btn btn-secondary nav-tab active" id="tab-dashboard" onclick="switchTab('view-dashboard')">📊
+                Dashboard</button>
+            <button class="btn btn-secondary nav-tab" id="tab-search" onclick="switchTab('view-search')">🔍
+                Search</button>
+        </div>
+
+        <div class="header-right">
+            <button class="btn btn-secondary btn-icon" onclick="openSettings()" title="Settings">⚙️</button>
+            <button class="btn btn-secondary" onclick="toggleManageMode()" id="btn-manage"
+                title="Toggle Delete Mode">✏️</button>
+            <button class="btn btn-secondary btn-icon" onclick="toggleWindow('agent-window')"
+                title="Agent Monitor">🤖</button>
+            <button class="btn btn-secondary btn-icon" onclick="toggleWindow('terminal-window')"
+                title="Terminal Log">💻</button>
+            <button class="btn btn-secondary" onclick="exportData()" title="Export Data">💾</button>
+            <button class="btn btn-primary" onclick="startScan()" title="Start Scan">🔄 扫描</button>
+            <button class="btn btn-secondary btn-icon" onclick="promptAddProject()"
+                title="Add Project by URL">➕</button>
+        </div>
+    </header>
+
+    <!-- Agent Monitor Window -->
+    <!-- Agent Monitor Window -->
+    <div id="agent-window" class="floating-window">
+        <div class="window-header" id="agent-header">
+            <div class="window-title"><span>🤖</span> Agent Mission Control</div>
+            <div class="window-controls">
+                <button class="win-btn win-min" onclick="toggleWindow('agent-window')"></button>
+                <button class="win-btn win-close" onclick="toggleWindow('agent-window')"></button>
+            </div>
+        </div>
+
+        <div class="agent-toolbar">
+            <button class="btn btn-primary" onclick="startScan()" style="justify-content:center">▶ Full Scan</button>
+            <button class="btn btn-secondary" onclick="triggerNewsScan()" style="justify-content:center">📰 Discover
+                News</button>
+            <button class="btn btn-secondary" onclick="startBatchAnalysis()" style="justify-content:center">🧠 Batch
+                Analyze</button>
+            <button class="btn btn-secondary" onclick="openSettings()" style="justify-content:center">⚙️
+                Settings</button>
+        </div>
+
+        <div class="agent-list" style="overflow-y:auto; flex:1">
+            <!-- Master Agent -->
+            <div class="agent-item" id="agent-master">
+                <div class="agent-icon">👑</div>
+                <div class="agent-info">
+                    <div class="agent-name">Master Supervisor</div>
+                    <div class="agent-status">Idle</div>
+                </div>
+                <div style="width:8px; height:8px; border-radius:50%; background:#3fb950; display:none"
+                    class="active-indicator"></div>
+            </div>
+
+            <!-- Crawler Agent -->
+            <div class="agent-item" id="agent-crawler">
+                <div class="agent-icon">🕷️</div>
+                <div class="agent-info">
+                    <div class="agent-name">Crawler Agent</div>
+                    <div class="agent-status">Idle</div>
+                </div>
+            </div>
+
+            <!-- Analyzer Agent -->
+            <div class="agent-item" id="agent-analyzer">
+                <div class="agent-icon">🧠</div>
+                <div class="agent-info">
+                    <div class="agent-name">Analyzer Agent</div>
+                    <div class="agent-status">Idle</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terminal Window -->
+    <div id="terminal-window" class="floating-window">
+        <div class="window-header" id="terminal-header">
+            <div class="window-title"><span>💻</span> System Terminal</div>
+            <div class="window-controls">
+                <button class="win-btn win-min" onclick="toggleWindow('terminal-window')"></button>
+                <button class="win-btn win-close" onclick="toggleWindow('terminal-window')"></button>
+            </div>
+        </div>
+        <div class="terminal-content" id="terminal-content">
+            <!-- Logs -->
+        </div>
+    </div>
+
+    <!-- Search Result Modal -->
+    <div class="modal" id="search-modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:1rem; align-items:center;">
+                <h3 style="font-size:1.25rem; display:flex; align-items:center; gap:0.5rem">
+                    <span>🤖</span> Agent Recommendation
+                </h3>
+                <button onclick="document.getElementById('search-modal').classList.remove('active')"
+                    style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer">&times;</button>
+            </div>
+            <div id="search-loading" style="display:none; text-align:center; padding:2rem;">
+                <div class="spinner"></div>
+                <p style="margin-top:1rem; color:var(--text-secondary)">Analyzing your request...</p>
+            </div>
+            <div id="search-results-content" style="display:none;">
+                <div class="ai-recommendation" id="ai-recommendation"
+                    style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); 
+                            padding:1rem; border-radius:8px; margin-bottom:1.5rem; line-height:1.6; white-space:pre-wrap;"></div>
+                <h4
+                    style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem; text-transform:uppercase; letter-spacing:0.05em;">
+                    Matched Projects</h4>
+                <div class="projects-grid" id="search-projects-grid"
+                    style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-dashboard" class="view-section active">
+        <main class="main">
+            <aside class="sidebar collapsed" id="main-sidebar">
+                <!-- Navigation -->
+                <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
+                    <div class="category-item"
+                        onclick="switchTab('view-search'); handleChatSubmit('conversational', 'Help me find a project')">
+                        <span style="margin-right:8px">🤖</span> Ask AI Agent
+                    </div>
+                    <div class="category-item" onclick="switchTab('view-search'); showSourceBoard(); loadNewsSources()">
+                        <span style="margin-right:8px">🌍</span> Discovery Hub
+                    </div>
+                    <div class="category-item" onclick="toggleWindow('agent-window')">
+                        <span style="margin-right:8px">⚙️</span> System / Agent
+                    </div>
+                </div>
+
+                <!-- Stats Summary -->
+                <div id="sidebar-stats"
+                    style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+                        <div style="background:var(--bg-card); padding:0.75rem; border-radius:8px; text-align:center;">
+                            <div style="font-size:1.1rem; font-weight:600;" id="sidebar-stat-total">0</div>
+                            <div style="font-size:0.65rem; color:var(--text-secondary); text-transform:uppercase;">Total
+                            </div>
+                        </div>
+                        <div style="background:var(--bg-card); padding:0.75rem; border-radius:8px; text-align:center;">
+                            <div style="font-size:1.1rem; font-weight:600; color:#3fb950" id="sidebar-stat-analyzed">0
+                            </div>
+                            <div style="font-size:0.65rem; color:var(--text-secondary); text-transform:uppercase;">
+                                Analyzed</div>
+                        </div>
+                    </div>
+                    <div
+                        style="margin-top:0.75rem; display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); padding:0 0.5rem;">
+                        <span>Pending: <span id="sidebar-stat-pending" style="color:#f59e0b">0</span></span>
+                        <span>Stars: <span id="sidebar-stat-stars">0</span></span>
+                    </div>
+                </div>
+
+                <h3>项目分类</h3>
+                <div id="categories"></div>
+            </aside>
+
+            <section class="content">
+                <div class="content-header" style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <h2 id="current-category">选择一个分类</h2>
+                    <button class="btn btn-secondary" onclick="refreshCategory()">刷新</button>
+                </div>
+                <div class="projects-grid" id="projects">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Ready to explore</p>
+                    </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Search View (Conversational) -->
+    <div id="view-search" class="view-section"
+        style="display:none; padding:2rem; max-width:1200px; margin:0 auto; height: calc(100vh - 64px); overflow-y: auto; flex-direction:column;">
+
+        <!-- Chat Area -->
+        <div id="chat-container"
+            style="flex:0 0 auto; margin-bottom:1.5rem; max-width:800px; margin-left:auto; margin-right:auto; width:100%;">
+            <div style="text-align:center; margin-bottom:2rem;">
+                <h1
+                    style="font-size:2rem; background: linear-gradient(135deg, #fff 0%, #3b82f6 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                    Talk to Search
+                </h1>
+                <p style="color:var(--text-secondary);">Chat with AI to refine your need, then search hybrid sources.
+                </p>
+            </div>
+
+            <div id="chat-history"
+                style="min-height:100px; margin-bottom:1rem; display:flex; flex-direction:column; gap:1rem;">
+                <!-- Messages go here -->
+                <div class="chat-msg system">
+                    <div class="msg-bubble system">👋 Hi! What kind of project are you looking for today?</div>
+                </div>
+            </div>
+
+            <div style="position:relative;">
+                <input type="text" id="chat-input" placeholder="Type a topic (e.g. 'local RAG')..."
+                    style="width:100%; padding:1rem 6.5rem 1rem 1.5rem; font-size:1.1rem; background:var(--bg-card); border:1px solid var(--border); border-radius:30px; color:white; box-shadow:0 4px 20px rgba(0,0,0,0.2); outline:none; transition:all 0.3s;"
+                    onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+                    onkeypress="if(event.key === 'Enter') handleChatSubmit('direct')">
+
+                <div
+                    style="position:absolute; right:8px; top:50%; transform:translateY(-50%); display:flex; gap:0.5rem;">
+                    <button onclick="handleChatSubmit('direct')" title="Direct Search"
+                        style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border); width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s;">
+                        🔍
+                    </button>
+                    <button onclick="handleChatSubmit('conversational')" title="Ask AI Agent"
+                        style="background:var(--accent); color:white; border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(59, 130, 246, 0.4);">
+                        🤖
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div
+            style="margin-top: 1rem; display: flex; justify-content: center; gap: 1rem; animation: fadeIn 0.5s ease-out;">
+            <button class="btn btn-secondary" onclick="showSourceBoard(); loadNewsSources()"
+                style="font-size: 0.85rem; border-radius: 20px; border-color: var(--border); background: rgba(255,255,255,0.05);">
+                🌍 Open Discovery Source Board
+            </button>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border); margin:1rem 0; width:100%; opacity:0.5">
+
+        <!-- Source Board Panel (Collapsible) -->
+        <div id="source-board-panel"
+            style="display:none; margin-bottom:2rem; background:var(--bg-card); border-radius:12px; border:1px solid var(--border); padding:1.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 style="font-size:1.2rem; display:flex; align-items:center; gap:0.5rem;">
+                    🌍 Source Board
+                </h3>
+                <button onclick="toggleSourceBoard()" class="btn btn-secondary" style="padding:4px 12px;">✕
+                    Close</button>
+            </div>
+
+            <!-- Add Source -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="text" id="new-source-name" placeholder="Name"
+                        style="width:30%; padding:0.5rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; color:white; font-size:0.85rem;">
+                    <input type="text" id="new-source-url" placeholder="URL"
+                        style="flex:1; padding:0.5rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; color:white; font-size:0.85rem;">
+                    <button onclick="addNewsSource()" class="btn btn-primary" style="padding:0.5rem 1rem;">➕</button>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="text" id="discovery-url" placeholder="Quick scan any URL..."
+                        style="flex:1; padding:0.5rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; color:white; font-size:0.85rem;">
+                    <button onclick="scanNewsSource()" class="btn btn-primary" style="padding:0.5rem 1rem;">🚀
+                        Scan</button>
+                </div>
+            </div>
+
+            <!-- Sources Grid -->
+            <div id="sources-board"
+                style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:1rem; max-height:300px; overflow-y:auto;">
+                <div style="text-align:center; padding:1rem; color:var(--text-secondary); grid-column:1/-1;">Click "🌍
+                    Discovery Hub" to load sources</div>
+            </div>
+
+            <!-- Discovery Results -->
+            <div id="discovery-results-container"
+                style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
+                <h4 style="font-size:1rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                    🕵️ Discovered Projects <span id="discovery-count"
+                        style="font-size:0.8rem; background:var(--bg-secondary); padding:2px 6px; border-radius:8px;"></span>
+                </h4>
+                <div id="discovery-results" style="max-height:400px; overflow-y:auto;"></div>
+            </div>
+        </div>
+
+        <!-- Results Area -->
+        <div id="search-results-area" style="flex:1;">
+            <div id="ai-insight-block" style="display:none; margin-bottom:2rem;"></div>
+            <div id="results-grid" class="projects-grid"
+                style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1.5rem;"></div>
+        </div>
+    </div>
+
+    <!-- Discovery View removed - integrated into view-search -->
+
+    <!-- Modal (Tutorial) -->
+    <div class="modal" id="tutorial-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title" style="font-size:1.5rem; margin:0"></h3>
+                <button onclick="closeModal()"
+                    style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:4px;">&times;</button>
+            </div>
+            <div class="tutorial-content" id="tutorial-content" style="line-height:1.6"></div>
+        </div>
+    </div>
+
+    <!--Settings Modal-->
+    <div class="modal" id="settings-modal" onclick="closeSettingsIfOutside(event)">
+        <div class="modal-content" style="width: 400px; min-height: auto;">
+            <div class="modal-header">
+                <h2>⚙️ Settings</h2>
+                <button class="close-modal" onclick="closeSettings()">×</button>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom:0.5rem; color:var(--text-secondary)">📅 Automatic Daily
+                        Scan Time</label>
+                    <input type="time" id="setting-scan-time"
+                        style="width:100%; padding:0.5rem; background:var(--bg-primary); border:1px solid var(--border); color: var(--text-primary); border-radius:4px;">
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings()" style="width:100%">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:5001';
+        let currentCategory = null;
+
+        // --- Conversational Search & Hybrid Logic ---
+        const chatHistory = [];
+        let isSearching = false;
+
+        function appendChat(role, text) {
+            const historyDiv = document.getElementById('chat-history');
+            const align = role === 'user' ? 'flex-end' : 'flex-start';
+            const bg = role === 'user' ? 'var(--accent)' : 'var(--bg-card)';
+            const color = 'white';
+
+            const html = `
+                <div style="display:flex; justify-content:${align};">
+                    <div style="background:${bg}; color:${color}; padding:0.8rem 1.2rem; border-radius:18px; max-width:80%; line-height:1.5; font-size:0.95rem; box-shadow:0 2px 8px rgba(0,0,0,0.1)">
+                        ${(typeof marked !== 'undefined') ? marked.parse(text) : text}
+                    </div>
+                </div>
+            `;
+            historyDiv.insertAdjacentHTML('beforeend', html);
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+
+            chatHistory.push({ role, content: text });
+        }
+
+        async function handleChatSubmit(mode = 'conversational', manualText = null) {
+            const input = document.getElementById('chat-input');
+            const text = manualText || input.value.trim();
+            if (!text) return;
+
+            if (!manualText) input.value = '';
+            appendChat('user', text);
+
+            // Direct Search Mode
+            if (mode === 'direct') {
+                appendChat('assistant', `🔍 **Direct Search**: Searching for "${text}"...`);
+                performHybridSearch(text);
+                return;
+            }
+
+            // Conversational Mode
+            // Show typing wrapper
+            const historyDiv = document.getElementById('chat-history');
+            const loadingId = 'typing-' + Date.now();
+            historyDiv.insertAdjacentHTML('beforeend', `<div id="${loadingId}" style="color:var(--text-secondary); font-size:0.8rem; margin-left:1rem;">Thinking...</div>`);
+
+            try {
+                const res = await fetch(`${API}/api/agent/refine`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ history: chatHistory })
+                });
+                const actionData = await res.json();
+
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
+
+                if (actionData.action === 'question') {
+                    appendChat('assistant', actionData.content);
+                } else if (actionData.action === 'search') {
+                    appendChat('assistant', `✅ clear. Searching for: **${actionData.content}**`);
+                    performHybridSearch(actionData.content);
+                }
+            } catch (e) {
+                console.error(e);
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.innerHTML = "Error: " + e.message;
+            }
+        }
+
+        function fillSearch(txt) {
+            handleChatSubmit('direct', txt);
+        }
+
+        async function performHybridSearch(query) {
+            const grid = document.getElementById('results-grid');
+            const insight = document.getElementById('ai-insight-block');
+
+            grid.innerHTML = '';
+            insight.style.display = 'block';
+            insight.innerHTML = `
+                <div style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); padding:1rem; border-radius:12px; display:flex; align-items:center; gap:1rem;">
+                    <div class="spinner" style="width:20px;height:20px;"></div>
+                    <span>Initializing Hybrid Search...</span>
+                </div>`;
+
+            let allProjects = [];
+            const processedIds = new Set();
+            isSearching = true;
+
+            function renderBatch(projects, source) {
+                if (!projects || projects.length === 0) return;
+
+                const newProjects = projects.filter(p => !processedIds.has(p.id));
+                newProjects.forEach(p => processedIds.add(p.id));
+
+                if (newProjects.length === 0) return;
+
+                allProjects = [...allProjects, ...newProjects];
+
+                // Update Insight status
+                insight.innerHTML = `
+                <div style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); padding:1rem; border-radius:12px; display:flex; align-items:center; gap:1rem;">
+                        <div class="spinner" style="width:20px;height:20px;"></div>
+                        <span>So far found ${allProjects.length} projects (Latest from ${source}). Analysis pending...</span>
+                </div>
+                `;
+
+                // Append results
+                grid.insertAdjacentHTML('beforeend', newProjects.map(p => renderProject(p)).join(''));
+            }
+
+            // 1. Local Search (Fast)
+            try {
+                const localRes = await fetch(`${API}/api/search/local`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const localData = await localRes.json();
+                renderBatch(localData.results, "Local DB");
+            } catch (e) { console.error("Local search err", e); }
+
+            // 2. Remote Search (Slow) - Async
+            fetch(`${API}/api/search/remote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            }).then(res => res.json()).then(data => {
+                renderBatch(data.results, "GitHub Live");
+
+                // 3. After remote results (or timeout), trigger AI Recommend
+                if (allProjects.length > 0) return fetch(`${API}/api/search/recommend`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, projects: allProjects.slice(0, 10) })
+                });
+            }).then(res => {
+                if (res) return res.json();
+            }).then(data => {
+                if (data && data.recommendation) {
+                    insight.innerHTML = `
+                    <div class="ai-recommendation" style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); padding:1.5rem; border-radius:12px; line-height:1.6;">
+                        <h3 style="display:flex; align-items:center; gap:0.5rem; font-size:1.1rem; margin-bottom:1rem;">🤖 AI Insight</h3>
+                        ${(typeof marked !== 'undefined') ? marked.parse(data.recommendation) : data.recommendation}
+                    </div>`;
+                }
+            }).catch(e => {
+                console.error("Remote/Recommend err", e);
+                insight.innerHTML = `<div style="color:var(--text-secondary)">Search finished. Insight generation failed or timed out.</div>`;
+            }).finally(() => {
+                isSearching = false;
+            });
+        }
+
+
+        // Initialize Draggables
+        makeDraggable(document.getElementById("agent-window"));
+        makeDraggable(document.getElementById("terminal-window"));
+
+        // Force hide modal on load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('search-modal').classList.remove('active');
+        });
+
+        function toggleManageMode() {
+            document.body.classList.toggle('manage-mode');
+            const btn = document.getElementById('btn-manage');
+            btn.classList.toggle('manage-active');
+        }
+
+        function switchTab(tab) {
+            // Hide all view sections first
+            document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+
+            // Show the requested view with correct display type
+            const viewEl = document.getElementById(tab);
+            if (viewEl) {
+                // view-search uses flexbox layout
+                viewEl.style.display = (tab === 'view-search') ? 'flex' : 'block';
+            }
+        }
+
+
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        function toggleSourceBoard() {
+            const panel = document.getElementById('source-board-panel');
+            if (panel) {
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        function showSourceBoard() {
+            const panel = document.getElementById('source-board-panel');
+            if (panel) {
+                panel.style.display = 'block';
+            }
+        }
+
+        function toggleWindow(id) {
+            const el = document.getElementById(id);
+            if (el.classList.contains('active')) {
+                el.classList.remove('active');
+            } else {
+                el.classList.add('active');
+                // Bring to front
+                document.querySelectorAll('.floating-window').forEach(w => w.style.zIndex = 1000);
+                el.style.zIndex = 1001;
+            }
+        }
+
+        async function performSearch() {
+            const query = document.getElementById('search-input').value.trim();
+            if (!query) return;
+
+            const modal = document.getElementById('search-modal');
+            const loading = document.getElementById('search-loading');
+            const content = document.getElementById('search-results-content');
+
+            modal.classList.add('active');
+            loading.style.display = 'block';
+            content.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const data = await res.json();
+
+                document.getElementById('ai-recommendation').textContent = data.recommendation;
+                const grid = document.getElementById('search-projects-grid');
+
+                if (data.results && data.results.length > 0) {
+                    grid.innerHTML = data.results.map(p => renderProject(p)).join('');
+                } else {
+                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-secondary)">No direct matches found.</div>';
+                }
+
+                loading.style.display = 'none';
+                content.style.display = 'block';
+
+            } catch (e) {
+                loading.style.display = 'none';
+                alert('Search failed: ' + e.message);
+            }
+        }
+
+        function makeDraggable(elmnt) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            const header = elmnt.querySelector('.window-header');
+            if (header) {
+                header.onmousedown = dragMouseDown;
+            }
+
+            function dragMouseDown(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+
+                // Bring to front on click
+                document.querySelectorAll('.floating-window').forEach(w => w.style.zIndex = 1000);
+                elmnt.style.zIndex = 1001;
+            }
+
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        // Close panels when clicking outside (no longer needed for dropdowns, but good for general windows if desired)
+        // document.addEventListener('click', (e) => {
+        //     if (!e.target.closest('.header-right') && !e.target.closest('.panel-dropdown')) {
+        //         document.querySelectorAll('.panel-dropdown').forEach(p => p.classList.remove('active'));
+        //     }
+        // });
+
+        // 加载分类
+        async function loadCategories() {
+            try {
+                const res = await fetch(`${API}/api/categories`);
+                if (!res.ok) throw new Error('Failed to fetch categories');
+                const categories = await res.json();
+
+                const container = document.getElementById('categories');
+                container.innerHTML = Object.entries(categories).map(([id, cat]) => `
+                    <div class="category-item" id="cat-item-${id}" onclick="selectCategory('${id}')">
+                        ${cat.name}
+                        <span class="category-count" id="count-${id}">0</span>
+                    </div>
+                `).join('');
+
+                // Auto Select "trending" or first
+                const keys = Object.keys(categories);
+                if (keys.includes('trending')) {
+                    await selectCategory('trending');
+                } else if (keys.length > 0) {
+                    await selectCategory(keys[0]);
+                }
+
+                loadStats();
+            } catch (e) {
+                console.error('Init error:', e);
+                addLog('Initialization failed: ' + e.message, 'error');
+            }
+        }
+
+        async function loadStats() {
+            const res = await fetch(`${API}/api/stats`);
+            const stats = await res.json();
+            document.getElementById('sidebar-stat-total').textContent = stats.total_projects || 0;
+            document.getElementById('sidebar-stat-analyzed').textContent = stats.analyzed_projects || 0;
+            document.getElementById('sidebar-stat-stars').textContent = formatNumber(stats.total_stars || 0);
+
+            // Load pending count
+            const pendingRes = await fetch(`${API}/api/pending`);
+            const pendingData = await pendingRes.json();
+            document.getElementById('sidebar-stat-pending').textContent = pendingData.pending || 0;
+
+            const statusRes = await fetch(`${API}/api/status`);
+            const status = await statusRes.json();
+            if (status.categories) {
+                Object.entries(status.categories).forEach(([cat, data]) => {
+                    const el = document.getElementById(`count-${cat}`);
+                    if (el) el.textContent = data.count || 0;
+                });
+            }
+        }
+
+        async function selectCategory(category) {
+            currentCategory = category;
+
+            // Update Active State (Fixing the event crash)
+            document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+            const activeEl = document.getElementById(`cat-item-${category}`);
+            if (activeEl) activeEl.classList.add('active');
+
+            const container = document.getElementById('projects');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loadling...</p></div>';
+
+            try {
+                const res = await fetch(`${API}/api/projects/${category}`);
+                if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+
+                const projects = await res.json();
+
+                if (!Array.isArray(projects) || projects.length === 0) {
+                    container.innerHTML = '<div class="loading"><p>暂无项目。请点击左上角的 "刷新" 或使用 "➕" 添加项目。</p></div>';
+                    return;
+                }
+
+                let extraHtml = '';
+                if (category === 'trending') {
+                    const date = new Date();
+                    const weekStart = new Date(date.setDate(date.getDate() - date.getDay() + 1)).toLocaleDateString();
+                    extraHtml = `
+                <div class="trending-header" style="grid-column: 1/-1; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                    <h3 style="display:flex; align-items:center; gap:0.5rem; font-size:1.1rem; color:var(--text-primary)">
+                        🔥 This Week's Hottest <span style="font-size:0.8rem; font-weight:normal; color:var(--text-secondary); margin-left:auto">Week of ${weekStart}</span>
+                    </h3>
+                </div>
+                `;
+                }
+
+                container.innerHTML = extraHtml + projects.map(p => renderProject(p)).join('');
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = `<div class="loading" style="color:#ef4444"><p>加载失败: ${e.message}</p></div>`;
+            }
+
+            const catRes = await fetch(`${API}/api/categories`);
+            const cats = await catRes.json();
+            document.getElementById('current-category').textContent = cats[category]?.name || category;
+        }
+
+
+        // ... (API and previous functions) ...
+
+        function renderProject(p) {
+            // Normalize Tags
+            let rawTags = p.ai_tags || p.topics || [];
+            if (typeof rawTags === 'string') {
+                try { rawTags = JSON.parse(rawTags); } catch (e) { rawTags = []; }
+            }
+            if (!Array.isArray(rawTags)) rawTags = [];
+            const uniqueTags = [...new Set(rawTags)].slice(0, 4);
+
+            // Remote/Live Logic
+            const isRemote = p.ai_rag_summary && p.ai_rag_summary.includes("GitHub Live");
+            const remoteTag = isRemote ? `<span style="background:#2ea043; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em; margin-left:8px; vertical-align: middle;">Live</span>` : '';
+
+            // Click Actions
+            const isAnalyzed = !!p.ai_summary;
+            const cardClickAction = isAnalyzed
+                ? `onclick="showTutorial('${p.id}', '${(p.name || '').replace(/'/g, "\\'")}')"`
+                : `onclick="window.open('${p.url}', '_blank')"`;
+            const clickableClass = 'clickable';
+
+            // Generate Tags HTML
+            const tagsHtml = uniqueTags.length > 0 ? `
+                <div class="project-tags">
+                    ${uniqueTags.map(t => `<span class="tag" onclick="event.stopPropagation(); searchByTag('${t}')">${t}</span>`).join('')}
+                </div>` : '';
+
+            return `
+                <div class="project-card ${clickableClass}" ${cardClickAction}>
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteProject('${p.id}')" title="Delete">✕</button>
+                    ${p.ai_summary ? '<div class="analyzed-badge">✓ AI</div>' : ''}
+                    
+                    <div class="project-header">
+                        <a href="${p.url}" target="_blank" class="project-name" onclick="event.stopPropagation()">${p.name}</a>
+                        ${remoteTag}
+                        <span class="project-stars" style="margin-left:auto; font-size:0.75rem; color:var(--text-secondary)">⭐ ${formatNumber(p.stars)}</span>
+                    </div>
+                    
+                    <p class="project-desc">${p.description || 'No description'}</p>
+                    
+                    ${tagsHtml}
+                    
+                    <div class="project-meta">
+                        <span style="display:flex;align-items:center">
+                            <span class="lang-dot" style="background: ${getLangColor(p.language)}"></span>
+                            ${p.language || 'Unknown'}
+                        </span>
+                        <span>🍴 ${formatNumber(p.forks)}</span>
+                        <span>📅 ${new Date(p.created_at).getFullYear()}</span>
+                    </div>
+
+                     ${p.ai_rag_summary && !isRemote ? `
+                        <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">
+                            <div style="font-size:0.8rem;background:var(--bg-secondary);padding:0.5rem;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                💡 ${p.ai_rag_summary}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${isRemote ? `
+                        <button class="btn btn-primary" onclick="event.stopPropagation(); saveProject('${p.url}', this)" style="margin-top:1rem; width:100%; justify-content:center;">⬇️ Save to Library</button>
+                    ` : `
+                        <button class="btn btn-secondary" style="margin-top:0.75rem;font-size:0.75rem;width:100%" onclick="event.stopPropagation(); analyzeProject('${p.id}')">🤖 AI Analyze</button>
+                    `}
+                </div>
+            `;
+        }
+
+        async function saveProject(url, btn) {
+            if (btn) {
+                btn.innerHTML = "⏳ Saving...";
+                btn.disabled = true;
+            }
+            try {
+                const res = await fetch('/api/project/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                const data = await res.json();
+                if (data.error) {
+                    alert("Error: " + data.error);
+                    if (btn) { btn.innerHTML = "❌ Retry"; btn.disabled = false; }
+                } else {
+                    if (btn) {
+                        btn.innerHTML = "✅ Saved";
+                        btn.style.background = "#238636";
+                        btn.style.color = "white";
+                    }
+                    addLog(`Saved project from ${url}`, "success");
+                }
+            } catch (e) {
+                alert("Error: " + e.message);
+                if (btn) { btn.innerHTML = "❌ Retry"; btn.disabled = false; }
+            }
+        }
+
+        function searchByTag(tag) {
+            document.getElementById('search-input').value = tag;
+            performSearch();
+        }
+
+        async function deleteProject(id) {
+            if (!confirm('确定要删除这个项目吗？')) return;
+            try {
+                const res = await fetch(`/api/project/delete/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.error) {
+                    alert('删除失败: ' + data.error);
+                } else {
+                    addLog(`已删除项目 ${id}`, 'info');
+                    if (currentCategory) selectCategory(currentCategory);
+                }
+            } catch (e) {
+                alert('删除失败: ' + e.message);
+            }
+        }
+
+        async function startScan() {
+            await fetch(`${API}/api/scan`, { method: 'POST' });
+            addLog('Scan started...', 'info');
+            // Auto open windows if closed
+            const term = document.getElementById('terminal-window');
+            if (!term.classList.contains('active')) toggleWindow('terminal-window');
+        }
+
+        function exportData() {
+            window.location.href = '/api/export';
+        }
+
+
+        // --- News Sources Logic ---
+        async function loadNewsSources() {
+            try {
+                const res = await fetch(`${API}/api/news/sources`);
+                const data = await res.json();
+                renderSourcesBoard(data.sources || []);
+            } catch (e) {
+                console.error("Failed to load news sources", e);
+                document.getElementById('sources-board').innerHTML = `<div style="color:red">Failed to load sources</div>`;
+            }
+        }
+
+        function renderSourcesBoard(sources) {
+            const container = document.getElementById('sources-board');
+            if (!sources.length) {
+                container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem; background:var(--bg-card); border-radius:12px; color:var(--text-secondary);">
+                    <div style="font-size:2rem; margin-bottom:1rem;">📭</div>
+                    No sources added yet. Add one above!
+                </div>`;
+                return;
+            }
+
+            container.innerHTML = sources.map(s => `
+                <div class="project-card" style="display:flex; flex-direction:column;">
+                    <button class="delete-btn" style="display:flex;" onclick="deleteNewsSource(${s.id})" title="Delete">✕</button>
+                    <div class="project-header" style="margin-bottom:0.5rem;">
+                        <span style="font-size:1.1rem; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</span>
+                    </div>
+                    <div style="font-size:0.8rem; color:#3b82f6; margin-bottom:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        <a href="${s.url}" target="_blank" style="color:inherit; text-decoration:none;">${s.url}</a>
+                    </div>
+                    
+                    <div style="margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div style="font-size:0.7rem; color:var(--text-secondary);">
+                            ${s.last_scanned ? `Last scanned: ${new Date(s.last_scanned).toLocaleDateString()}` : 'Never scanned'}
+                        </div>
+                        <button onclick="scanSavedSource(${s.id}, this)" class="btn btn-secondary" style="padding:4px 12px; font-size:0.8rem;">
+                            🚀 Scan
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addNewsSource() {
+            const nameInput = document.getElementById('new-source-name');
+            const urlInput = document.getElementById('new-source-url');
+            const name = nameInput.value.trim();
+            const url = urlInput.value.trim();
+
+            if (!name || !url) return alert("Name and URL required");
+
+            try {
+                const res = await fetch(`${API}/api/news/sources/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, url })
+                });
+                const data = await res.json();
+                if (data.error) alert(data.error);
+                else {
+                    nameInput.value = '';
+                    urlInput.value = '';
+                    loadNewsSources();
+                }
+            } catch (e) { alert(e.message); }
+        }
+
+        async function deleteNewsSource(id) {
+            if (!confirm("Remove this source?")) return;
+            await fetch(`${API}/api/news/sources/delete/${id}`, { method: 'DELETE' });
+            loadNewsSources();
+        }
+
+        async function scanSavedSource(id, btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳...";
+            btn.disabled = true;
+
+            const resultsContainer = document.getElementById('discovery-results-container');
+            const resultsGrid = document.getElementById('discovery-results');
+            resultsContainer.style.display = 'block';
+            resultsGrid.innerHTML = `<div class="spinner" style="margin:2rem auto;"></div><div style="text-align:center;">Scanning ${id}...</div>`;
+            // Scroll to results
+            resultsContainer.scrollIntoView({ behavior: 'smooth' });
+
+            try {
+                const res = await fetch(`${API}/api/news/sources/scan/${id}`, { method: 'POST' });
+                const data = await res.json();
+                renderScanResults(data);
+                loadNewsSources(); // Refresh last scanned time
+            } catch (e) {
+                resultsGrid.innerHTML = `<div style="color:#ef4444; text-align:center;">Scan failed: ${e.message}</div>`;
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function renderScanResults(data) {
+            const resultsContainer = document.getElementById('discovery-results-container');
+            const resultsGrid = document.getElementById('discovery-results');
+            const countLabel = document.getElementById('discovery-count');
+
+            resultsContainer.style.display = 'block';
+
+            if (data.results && data.results.length > 0) {
+                countLabel.textContent = `${data.results.length} new`;
+                resultsGrid.innerHTML = `
+                    <div class="projects-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1rem;">
+                        ${data.results.map(p => renderProject(p)).join('')}
+                    </div>
+                `;
+            } else {
+                countLabel.textContent = "0 new";
+                resultsGrid.innerHTML = `<div style="text-align:center; padding:2rem; background:var(--bg-card); border-radius:8px;">No new GitHub projects found in this source.</div>`;
+            }
+        }
+
+        async function scanNewsSource() {
+            const urlInput = document.getElementById('discovery-url');
+            const url = urlInput.value.trim();
+            if (!url) return alert("Please enter a URL");
+
+            const btn = document.querySelector('#discovery-url + button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳";
+            btn.disabled = true;
+
+            const resultsContainer = document.getElementById('discovery-results-container');
+            const resultsGrid = document.getElementById('discovery-results');
+            resultsContainer.style.display = 'block';
+            resultsGrid.innerHTML = `<div class="spinner" style="margin:2rem auto;"></div><div style="text-align:center;">Parsing page...</div>`;
+
+            try {
+                const res = await fetch(`${API}/api/news/scan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                const data = await res.json();
+                renderScanResults(data);
+            } catch (e) {
+                resultsGrid.innerHTML = `<div style="color:#ef4444; text-align:center;">Scan failed: ${e.message}</div>`;
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function promptAddProject() {
+            const url = prompt("Enter GitHub Repository URL (e.g. https://github.com/owner/repo):");
+            if (!url) return;
+
+            addLog(`Adding project from ${url}...`, "info");
+            try {
+                const res = await fetch('/api/project/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    addLog(`Added ${data.project}. It will appear shortly/after analysis.`, "success");
+                    // Refresh current view
+                    if (currentCategory) selectCategory(currentCategory);
+                }
+            } catch (e) {
+                alert('Request failed: ' + e.message);
+            }
+        }
+
+        async function confirmReset() {
+            if (!confirm("⚠️ DANGER: This will delete ALL database records and scan history. Are you sure?")) return;
+            if (!confirm("Are you really sure? This cannot be undone.")) return;
+
+            try {
+                const res = await fetch('/api/reset', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('System reset successfully. Page will reload.');
+                    location.reload();
+                }
+            } catch (e) {
+                alert('Reset failed: ' + e.message);
+            }
+        }
+
+        let progressInterval = null;
+
+        async function startBatchAnalysis() {
+            if (!confirm("开始批量分析所有待处理项目？将使用 80B 模型生成深度教程。")) return;
+
+            try {
+                const res = await fetch('/api/analyze_all', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    // Show progress bar and start polling
+                    document.getElementById('progress-container').style.display = 'block';
+                    startProgressPolling();
+
+                    // Auto open terminal
+                    const term = document.getElementById('terminal-window');
+                    if (!term.classList.contains('active')) toggleWindow('terminal-window');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Failed to start analysis');
+            }
+        }
+
+        async function triggerNewsScan() {
+            try {
+                const res = await fetch(`${API}/api/scan/news`, { method: 'POST' });
+                const data = await res.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    addLog('Started news discovery scan...', 'info');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Failed to start news scan');
+            }
+        }
+
+        function startProgressPolling() {
+            progressInterval = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/progress');
+                    const data = await res.json();
+
+                    const total = data.total || 0;
+                    const done = data.done || 0;
+                    const percent = total > 0 ? (done / total * 100) : 0;
+
+                    // Show progress if running or data indicates work
+                    if (data.done < data.total) { // Simple check, or check explicit 'is_running' if available, but this works
+                        document.getElementById('progress-container').style.display = 'flex';
+                        document.getElementById('progress-bar').style.width = `${percent}%`;
+                        document.getElementById('progress-text').innerHTML = `
+                            ${data.current} (${data.done}/${data.total})
+                            <button onclick="stopTask()" style="margin-left:1rem; padding:2px 8px; background:var(--bg-secondary); border:1px solid var(--border); color:#ef4444; border-radius:4px; cursor:pointer; font-size:0.75rem;">⏹ Stop</button>
+                        `;
+                    } else if (total > 0 && done >= total) {
+                        // Complete
+                        document.getElementById('progress-text').textContent = "Completed!";
+                        setTimeout(() => {
+                            document.getElementById('progress-container').style.display = 'none';
+                            clearInterval(progressInterval);
+                            loadStats(); // Refresh stats
+                        }, 2000);
+                    }
+                } catch (e) {
+                    console.error('Progress poll error:', e);
+                }
+            }, 1500);
+        }
+
+        async function stopTask() {
+            if (!confirm('Are you sure you want to stop the current analysis?')) return;
+            addLog('Stopping task...', 'warning');
+            try {
+                await fetch(`${API}/api/stop`, { method: 'POST' });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function analyzeProject(id) {
+            addLog(`Analyzing ${id}...`, 'info');
+            await fetch(`${API}/api/analyze/${id}`, { method: 'POST' });
+            if (currentCategory) selectCategory(currentCategory);
+        }
+
+        async function showTutorial(id, name) {
+            try {
+                document.getElementById('modal-title').textContent = name;
+                document.getElementById('tutorial-modal').classList.add('active');
+                const contentEl = document.getElementById('tutorial-content');
+
+                // 1. Optimistic Render: Show Summary Immediately if available
+                // We need to find the project object to get the summary. 
+                // Since we only have ID, we can try to find it in the DOM or rely on the fact that if card is clickable, summary exists.
+                // But 'p' is not passed here. Let's just retrieve it from the cache or DOM if needed, 
+                // BUT for now, let's just show a better loading state.
+
+                // Better approach: Let's fetch the local DB info first (fast) then the deep tutorial.
+                // But wait, the click event already had the project 'p' object in scope when renderProject ran. 
+                // We can't easily access it here without passing it.
+                // Let's just show a nice "Generating" UI for now, but improving the text.
+
+                contentEl.innerHTML = `
+                <div style="padding:2rem; text-align:center">
+                    <div class="spinner"></div>
+                    <h3 style="margin-top:1rem;color:var(--text-primary)">Creating Deep Tutorial...</h3>
+                    <p style="color:var(--text-secondary); max-width:400px; margin:0 auto; margin-top:0.5rem">
+                        Using <strong>Qwen-80B</strong> to analyze architecture, code, and use cases.
+                        <br>This may take 1-2 minutes for high-quality output.
+                    </p>
+                </div>
+                `;
+
+                // Fetch tutorial data (Server will generate if missing)
+                const res = await fetch(`${API}/api/tutorial/${id}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                let contentHtml = '';
+                const rawContent = data.tutorial || '暂无教程';
+
+                // Check if marked is available
+                if (typeof marked !== 'undefined') {
+                    try {
+                        contentHtml = marked.parse(rawContent);
+                    } catch (err) {
+                        console.error('Markdown parse error:', err);
+                        contentHtml = `<pre style="white-space:pre-wrap; font-family:sans-serif">${rawContent}</pre>`;
+                    }
+                } else {
+                    // Fallback if marked is not loaded (e.g. CDN blocked)
+                    contentHtml = `<div style="padding:1rem; background:rgba(255,165,0,0.1); border-left:4px solid orange; margin-bottom:1rem;">Note: Markdown renderer failed to load. Showing raw text.</div>
+                                   <pre style="white-wrap:pre-wrap; font-family:inherit; color:var(--text-primary)">${rawContent}</pre>`;
+                }
+
+                contentEl.innerHTML = `<div class="markdown-content" style="line-height:1.8; font-size:0.95rem;">${contentHtml}</div>`;
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('tutorial-content').innerHTML = `<div style="color:#ef4444; padding:2rem; text-align:center">
+                    <h3>Failed to load tutorial</h3>
+                    <p>${e.message}</p>
+                </div>`;
+            }
+        }
+
+        function closeModal() { document.getElementById('tutorial-modal').classList.remove('active'); }
+        async function openSettings() {
+            try {
+                const res = await fetch(`${API}/api/settings`);
+                const data = await res.json();
+                document.getElementById('setting-scan-time').value = data.scan_time || '02:00';
+                document.getElementById('settings-modal').classList.add('active');
+            } catch (e) {
+                console.error(e);
+                alert('Failed to load settings');
+            }
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.remove('active');
+        }
+
+        function closeSettingsIfOutside(e) {
+            if (e.target.id === 'settings-modal') closeSettings();
+        }
+
+        async function saveSettings() {
+            const time = document.getElementById('setting-scan-time').value;
+            if (!time) return;
+
+            try {
+                const res = await fetch(`${API}/api/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scan_time: time })
+                });
+                const data = await res.json();
+                if (data.status === 'saved') {
+                    addLog(`Settings saved. Daily scan set to ${time}`, 'success');
+                    closeSettings();
+                } else {
+                    alert('Error saving settings');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Failed to save settings');
+            }
+        }
+
+        function refreshCategory() { if (currentCategory) selectCategory(currentCategory); }
+
+        // SSE Logs & Agent Status
+        const eventSource = new EventSource(`${API}/api/logs`);
+        eventSource.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.level !== 'ping') {
+                addLog(data.message, data.level);
+                updateAgentStatus(data.message);
+
+                // Update Search Loading Text
+                if (isSearching) {
+                    const statusEl = document.getElementById('search-status-text');
+                    if (statusEl) {
+                        statusEl.textContent = data.message;
+                    }
+                }
+            }
+        };
+
+        let crawlerTimeout;
+        let analyzerTimeout;
+
+        function updateAgentStatus(msg) {
+            const master = document.getElementById('agent-master');
+            const crawler = document.getElementById('agent-crawler');
+            const analyzer = document.getElementById('agent-analyzer');
+
+            if (msg.includes('Scanning') || msg.includes('Crawling') || msg.includes('Found') || msg.includes('Fetching')) {
+                setAgentState(crawler, msg.replace(/(Scanning|Crawling):? /, ''), 'active');
+                setAgentState(master, 'Monitoring', 'active');
+
+                if (crawlerTimeout) clearTimeout(crawlerTimeout);
+                crawlerTimeout = setTimeout(() => setAgentState(crawler, 'Idle'), 5000);
+            } else if (msg.includes('Analyzing') || msg.includes('Analyzed') || msg.includes('Generating') || msg.includes('分析') || msg.includes('教程') || msg.includes('截图') || msg.includes('OCR')) {
+                // Extract a cleaner status message
+                let status = msg;
+                if (status.length > 30) status = "Processing...";
+                if (msg.includes('分析')) status = "Analyzing...";
+                if (msg.includes('教程')) status = "Writing Tutorial...";
+                if (msg.includes('截图') || msg.includes('OCR')) status = "Vision Analysis...";
+
+                setAgentState(analyzer, status, 'active');
+                setAgentState(master, 'Monitoring', 'active');
+
+                // Longer timeout for analysis tasks
+                if (analyzerTimeout) clearTimeout(analyzerTimeout);
+                analyzerTimeout = setTimeout(() => setAgentState(analyzer, 'Idle'), 60000);
+            }
+        }
+
+        function setAgentState(el, text, state = '') {
+            if (!el) return;
+            const statusEl = el.querySelector('.agent-status');
+            const btn = el.querySelector('.agent-btn');
+
+            if (statusEl) statusEl.textContent = text;
+
+            if (state === 'active') {
+                el.classList.add('active');
+                if (statusEl) statusEl.style.color = '#3fb950';
+                if (btn) btn.style.display = 'none';
+            } else {
+                el.classList.remove('active');
+                if (statusEl) statusEl.style.color = '#8b949e';
+                if (btn) btn.style.display = 'block';
+            }
+        }
+
+        function addLog(message, level = 'info') {
+            const panel = document.getElementById('terminal-content');
+            const time = new Date().toLocaleTimeString();
+
+            let color = '#58a6ff';
+            let icon = 'ℹ️';
+
+            if (level === 'error') { color = '#f85149'; icon = '❌'; }
+            if (level === 'success') { color = '#3fb950'; icon = '✅'; }
+            if (level === 'warning') { color = '#f59e0b'; icon = '⚠️'; }
+
+            // Format message highlights
+            const formattedMsg = message
+                .replace(/\[\d+\/\d+\]/, match => `<span style="color:#a371f7">${match}</span>`)
+                .replace(/(Analyzing|Scanning|Crawling)/, match => `<span style="font-weight:600; color:#fff">${match}</span>`);
+
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            div.innerHTML = `<span class="log-time">${time}</span> <span>${icon}</span> <span style="color:${color}">${formattedMsg}</span>`;
+
+            panel.appendChild(div);
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        function formatNumber(n) {
+            if (!n) return '0';
+            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toString();
+        }
+
+        function getLangColor(lang) {
+            const colors = { 'Python': '#3572A5', 'JavaScript': '#f1e05a', 'TypeScript': '#3178c6', 'Java': '#b07219', 'Go': '#00ADD8', 'Rust': '#dea584' };
+            return colors[lang] || '#8b949e';
+        }
+
+        loadCategories();
+    </script>
+</body>
+
+
+</html>
