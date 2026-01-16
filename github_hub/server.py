@@ -38,27 +38,10 @@ def get_categories():
 @app.route('/api/projects/<category>')
 def get_projects(category):
     """获取某分类的项目列表"""
-    limit = request.args.get('limit', 100, type=int)  # 默认显示 100 个，体现积累效果
+    limit = request.args.get('limit', 100, type=int)
     projects = master.db.get_projects_by_category(category, limit)
     
-    # 解析 JSON 字段
-    for p in projects:
-        if p.get('topics'):
-            try:
-                p['topics'] = json.loads(p['topics'])
-            except:
-                p['topics'] = []
-        if p.get('ai_tech_stack'):
-            try:
-                p['ai_tech_stack'] = json.loads(p['ai_tech_stack'])
-            except:
-                p['ai_tech_stack'] = []
-        if p.get('ai_use_cases'):
-            try:
-                p['ai_use_cases'] = json.loads(p['ai_use_cases'])
-            except:
-                p['ai_use_cases'] = []
-    
+    # Supabase JSONB fields are already Python objects, no parsing needed
     return jsonify(projects)
 
 @app.route('/api/export')

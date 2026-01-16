@@ -58,10 +58,10 @@ class Database:
         response = self.supabase.table("projects").select("*").execute()
         return [dict(row) for row in response.data]
     
-    def get_projects_by_category(self, category: str) -> List[Dict]:
+    def get_projects_by_category(self, category: str, limit: int = 100) -> List[Dict]:
         """Get projects by category"""
         self._ensure_client()
-        response = self.supabase.table("projects").select("*").eq("category", category).execute()
+        response = self.supabase.table("projects").select("*").eq("category", category).limit(limit).execute()
         return [dict(row) for row in response.data]
     
     def get_project(self, project_id: str) -> Optional[Dict]:
@@ -191,13 +191,13 @@ class Database:
     
     # ========== Settings ==========
     
-    def get_setting(self, key: str) -> Optional[str]:
+    def get_setting(self, key: str, default: str = None) -> Optional[str]:
         """Get a setting value"""
         self._ensure_client()
         response = self.supabase.table("settings").select("value").eq("key", key).execute()
         if response.data:
             return response.data[0]['value']
-        return None
+        return default
     
     def set_setting(self, key: str, value: str):
         """Set a setting value"""
