@@ -1,2059 +1,1679 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Hub - 开源项目仪表盘</title>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>GitHub Hub - Neural Network Bridge</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons+Round"
+      rel="stylesheet"
+    />
+
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              cyber: {
+                black: "#050505",
+                dark: "#0a0a0f",
+                panel: "#121218",
+                border: "#2a2a35",
+                cyan: "#00f0ff",
+                green: "#39ff14",
+                magenta: "#ff00aa",
+                dim: "rgba(0, 240, 255, 0.1)",
+              },
+            },
+            fontFamily: {
+              display: ["Space Grotesk", "sans-serif"],
+              mono: ["JetBrains Mono", "monospace"],
+            },
+            boxShadow: {
+              "neon-cyan":
+                "0 0 10px rgba(0, 240, 255, 0.3), 0 0 20px rgba(0, 240, 255, 0.1)",
+              "neon-green": "0 0 10px rgba(57, 255, 20, 0.3)",
+              "neon-magenta": "0 0 10px rgba(255, 0, 170, 0.3)",
+            },
+            animation: {
+              "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+              glitch: "glitch 1s linear infinite",
+              scanline: "scanline 8s linear infinite",
+            },
+            keyframes: {
+              scanline: {
+                "0%": { transform: "translateY(-100%)" },
+                "100%": { transform: "translateY(100%)" },
+              },
+            },
+          },
+        },
+      };
+    </script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-primary: #09090b;
-            /* Zinc 950 */
-            --bg-secondary: #18181b;
-            /* Zinc 900 */
-            --bg-card: #27272a;
-            /* Zinc 800 */
-            --text-primary: #f4f4f5;
-            /* Zinc 100 */
-            --text-secondary: #a1a1aa;
-            /* Zinc 400 */
-            --accent: #3b82f6;
-            /* Blue 500 */
-            --accent-glow: rgba(59, 130, 246, 0.5);
-            --border: #3f3f46;
-            /* Zinc 700 */
-            --glass: rgba(24, 24, 27, 0.8);
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow: hidden;
-            /* App-like feel */
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-secondary);
-        }
-
-        /* Read-Only Mode (Vercel) */
-        body.read-only-mode .btn-secondary[onclick*="analyzeProject"],
-        body.read-only-mode .btn-primary[onclick*="saveProject"],
-        body.read-only-mode .delete-btn,
-        body.read-only-mode .agent-btn,
-        body.read-only-mode #add-source-btn,
-        body.read-only-mode #refresh-btn {
-            display: none !important;
-        }
-
-        body.read-only-mode #agent-window .agent-toolbar {
-            display: none !important;
-        }
-
-        /* Header */
-        .header {
-            height: 64px;
-            padding: 0 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            background: rgba(9, 9, 11, 0.8);
-            backdrop-filter: blur(12px);
-            z-index: 50;
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            flex: 1;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex: 1;
-            justify-content: flex-end;
-        }
-
-        h1 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.025em;
-            white-space: nowrap;
-        }
-
-        /* Stats */
-        .header-stats {
-            display: flex;
-            gap: 1.5rem;
-        }
-
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .stat-value {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            line-height: 1;
-        }
-
-        .stat-label {
-            font-size: 0.6rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-top: 2px;
-        }
-
-        /* Buttons */
-        .btn {
-            height: 36px;
-            padding: 0 1rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            border: 1px solid transparent;
-        }
-
-        .btn-icon {
-            width: 36px;
-            padding: 0;
-            justify-content: center;
-            font-size: 1.1rem;
-        }
-
-        .btn-primary {
-            background: var(--text-primary);
-            color: var(--bg-primary);
-        }
-
-        .btn-primary:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: transparent;
-            border-color: var(--border);
-            color: var(--text-primary);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-card);
-            border-color: var(--text-secondary);
-        }
-
-        .nav-tab.active {
-            background: var(--bg-card);
-            color: var(--text-primary);
-            border-color: var(--text-secondary);
-            font-weight: 600;
-        }
-
-        /* Draggable Window (Modern) */
-        .floating-window {
-            position: fixed;
-            background: rgba(24, 24, 27, 0.9);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
-            display: none;
-            flex-direction: column;
-            z-index: 1000;
-            min-width: 320px;
-            overflow: hidden;
-            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .floating-window.active {
-            display: flex;
-        }
-
-        /* Modal (Overlay) */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            max-width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .window-header {
-            padding: 0.75rem 1rem;
-            background: rgba(255, 255, 255, 0.03);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: grab;
-        }
-
-        .window-title {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .window-controls {
-            display: flex;
-            gap: 6px;
-        }
-
-        .win-btn {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-
-        .win-btn:hover {
-            transform: scale(1.2);
-        }
-
-        .win-close {
-            background: #ef4444;
-        }
-
-        .win-min {
-            background: #f59e0b;
-        }
-
-        /* Specific Windows */
-        #agent-window {
-            top: 80px;
-            right: 24px;
-            width: 360px;
-            max-height: 80vh;
-            display: none;
-            flex-direction: column;
-        }
-
-        #agent-window.active {
-            display: flex;
-        }
-
-        .agent-toolbar {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.02);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .agent-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            transition: background 0.2s;
-        }
-
-        .agent-item:last-child {
-            border-bottom: none;
-        }
-
-        .agent-item.active {
-            background: rgba(63, 185, 80, 0.1);
-        }
-
-        .agent-icon {
-            font-size: 1.5rem;
-            width: 40px;
-            height: 40px;
-            background: var(--bg-card);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .agent-info {
-            flex: 1;
-        }
-
-        .agent-name {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .agent-status {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        #terminal-window {
-            bottom: 24px;
-            right: 24px;
-            width: 600px;
-            height: 400px;
-            display: none;
-            flex-direction: column;
-        }
-
-        #terminal-window.active {
-            display: flex;
-        }
-
-        .terminal-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0.75rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            color: #d1d5db;
-            line-height: 1.5;
-        }
-
-        .log-entry {
-            margin-bottom: 4px;
-            display: flex;
-            gap: 8px;
-            word-break: break-all;
-        }
-
-        .log-time {
-            color: #6b7280;
-            flex-shrink: 0;
-            font-size: 0.75rem;
-        }
-
-        /* Main Layout */
-        .main {
-            display: flex;
-            height: calc(100vh - 64px);
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 260px;
-            background: var(--bg-primary);
-            border-right: 1px solid var(--border);
-            height: calc(100vh - 64px);
-            padding: 1.5rem 1rem;
-            overflow-y: auto;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .sidebar.collapsed {
-            width: 0;
-            padding: 1.5rem 0;
-            overflow: hidden;
-            border-right: none;
-        }
-
-        .sidebar h3 {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 1rem;
-            padding-left: 0.75rem;
-        }
-
-        .category-item {
-            padding: 0.6rem 0.75rem;
-            border-radius: 6px;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            cursor: pointer;
-            margin-bottom: 2px;
-            display: flex;
-            align-items: center;
-            transition: all 0.15s;
-        }
-
-        .category-item:hover {
-            background: var(--bg-card);
-            color: var(--text-primary);
-        }
-
-        .category-item.active {
-            background: var(--bg-card);
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        .category-count {
-            margin-left: auto;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 99px;
-            color: var(--text-secondary);
-        }
-
-        /* Content Area */
-        .content {
-            flex: 1;
-            padding: 2rem;
-            overflow-y: auto;
-            height: calc(100vh - 64px);
-            background: radial-gradient(circle at top right, #1c1c20 0%, var(--bg-primary) 40%);
-        }
-
-        .projects-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.25rem;
-        }
-
-        .project-card {
-            background: rgba(24, 24, 27, 0.6);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1rem;
-            transition: all 0.2s ease;
-            backdrop-filter: blur(4px);
-        }
-
-        .project-card:hover {
-            border-color: var(--text-secondary);
-            transform: translateY(-2px);
-            background: rgba(39, 39, 42, 0.4);
-        }
-
-        .project-name {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            text-decoration: none;
-            display: block;
-            margin-bottom: 0.2rem;
-        }
-
-        .project-desc {
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 4;
-            line-clamp: 4;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            margin-bottom: 0.75rem;
-            min-height: 2.2em;
-        }
-
-        .project-meta {
-            display: flex;
-            gap: 0.75rem;
-            align-items: center;
-            margin-top: auto;
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-        }
-
-        .lang-dot {
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 4px;
-        }
-
-        /* Project Tags */
-        .project-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-bottom: 0.75rem;
-        }
-
-        .tag {
-            background: rgba(59, 130, 246, 0.15);
-            color: #60a5fa;
-            font-size: 0.65rem;
-            padding: 2px 8px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid transparent;
-        }
-
-        .tag:hover {
-            background: rgba(59, 130, 246, 0.3);
-            border-color: #3b82f6;
-        }
-
-        /* Analyzed Badge */
-        .analyzed-badge {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            font-size: 0.65rem;
-            font-weight: 600;
-            padding: 3px 8px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-            letter-spacing: 0.02em;
-        }
-
-        .project-card {
-            position: relative;
-        }
-
-        .delete-btn {
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: rgba(239, 68, 68, 0.9);
-            border: none;
-            color: white;
-            font-size: 12px;
-            cursor: pointer;
-            display: none;
-            /* Hidden by default */
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
-
-        /* Show only in manage mode */
-        body.manage-mode .delete-btn {
-            display: flex;
-        }
-
-        body.manage-mode .project-card {
-            border-style: dashed;
-        }
-
-        /* Slide Up Overlay */
-        .card-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(18, 18, 21, 0.95);
-            backdrop-filter: blur(8px);
-            border-top: 1px solid var(--primary);
-            transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            padding: 1.25rem;
-            display: flex;
-            flex-direction: column;
-            z-index: 5;
-            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .project-card:hover .card-overlay {
-            transform: translateY(0);
-        }
-
-        /* Customize scrollbar inside overlay */
-        .card-overlay-content {
-            flex: 1;
-            overflow-y: auto;
-            font-size: 0.85rem;
-            line-height: 1.6;
-            color: var(--text-secondary);
-            margin-bottom: 0.75rem;
-        }
-
-        /* Ensure card clipping */
-        .project-card {
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Sticky Modal Header */
-        .modal-content {
-            display: flex !important;
-            flex-direction: column;
-            padding: 0 !important;
-            max-height: 85vh;
-            overflow: hidden;
-            width: 800px;
-            min-height: 500px;
-            transition: all 0.3s ease;
-        }
-
-        .modal-header {
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--bg-card);
-            z-index: 10;
-            flex-shrink: 0;
-        }
-
-        .tutorial-content {
-            padding: 1.5rem;
-            overflow-y: auto;
-            flex: 1;
-        }
-
-        /* Hover effect for clickable card */
-        .project-card.clickable {
-            cursor: pointer;
-        }
-
-        .project-card.clickable:hover {
-            border-color: var(--primary);
-        }
-
-        .manage-active {
-            background: rgba(239, 68, 68, 0.2) !important;
-            border-color: #ef4444 !important;
-            color: #ef4444 !important;
-        }
+      /* Base Cyberpunk Styles */
+      body {
+        background-color: #050505;
+        color: #e0e0e0;
+        overflow: hidden; /* App-like feel */
+      }
+
+      /* Scanline Overlay */
+      .scanlines::before {
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        background:
+          linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+          linear-gradient(
+            90deg,
+            rgba(255, 0, 0, 0.06),
+            rgba(0, 255, 0, 0.02),
+            rgba(0, 0, 255, 0.06)
+          );
+        z-index: 2;
+        background-size:
+          100% 2px,
+          3px 100%;
+        pointer-events: none;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0a0a0f;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2a2a35;
+        border-radius: 0;
+        border: 1px solid #00f0ff;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #00f0ff;
+        box-shadow: 0 0 10px #00f0ff;
+      }
+
+      /* Neon Borders */
+      .neon-border {
+        position: relative;
+        border: 1px solid #2a2a35;
+      }
+      .neon-border:hover {
+        border-color: #00f0ff;
+        box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+      }
+
+      /* Glitch Effect on Hover text */
+      .hover-glitch:hover {
+        text-shadow:
+          2px 0 #ff00aa,
+          -2px 0 #00f0ff;
+      }
+
+      /* Utility */
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .text-neon-cyan {
+        color: #00f0ff;
+        text-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+      }
+      .text-neon-green {
+        color: #39ff14;
+        text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
+      }
+
+      /* Floating Window */
+      .floating-window {
+        position: fixed;
+        background: rgba(18, 18, 24, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid #00f0ff;
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+        display: none;
+        flex-direction: column;
+        z-index: 50;
+        min-width: 320px;
+        border-radius: 4px;
+      }
+      .floating-window.active {
+        display: flex;
+      }
+      .window-header {
+        background: rgba(0, 240, 255, 0.1);
+        border-bottom: 1px solid #00f0ff;
+        padding: 8px 12px;
+        cursor: grab;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .window-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        color: #00f0ff;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      /* Sidebar Item */
+      .category-item {
+        transition: all 0.2s;
+        border-left: 2px solid transparent;
+      }
+      .category-item:hover {
+        background: rgba(0, 240, 255, 0.05);
+        border-left-color: #00f0ff;
+        padding-left: 12px;
+        color: #00f0ff;
+      }
+      .category-item.active {
+        background: rgba(0, 240, 255, 0.1);
+        border-left-color: #00f0ff;
+        color: #00f0ff;
+        box-shadow: 0 0 15px rgba(0, 240, 255, 0.1) inset;
+      }
+
+      /* Markdown Content */
+      .markdown-content h1,
+      .markdown-content h2,
+      .markdown-content h3 {
+        color: #00f0ff;
+        margin-top: 1em;
+      }
+      .markdown-content code {
+        color: #39ff14;
+        background: #0a0a0f;
+        padding: 2px 4px;
+        font-family: "JetBrains Mono";
+      }
+      .markdown-content pre {
+        background: #0a0a0f;
+        padding: 1em;
+        border: 1px solid #2a2a35;
+        overflow-x: auto;
+      }
+
+      /* Modal */
+      .modal {
+        background: rgba(5, 5, 5, 0.9);
+        backdrop-filter: blur(5px);
+      }
+      .modal-content {
+        background: #121218;
+        border: 1px solid #00f0ff;
+        box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+      }
+
+      /* Progress Bar */
+      .cyber-progress-container {
+        background: #0a0a0f;
+        border: 1px solid #2a2a35;
+        height: 8px;
+        width: 100%;
+        position: relative;
+      }
+      .cyber-progress-bar {
+        background: #00f0ff;
+        height: 100%;
+        width: 0%;
+        box-shadow: 0 0 10px #00f0ff;
+        transition: width 0.3s;
+      }
+      /* Custom Window Controls - Large & Pixelated */
+      .win-ctrl {
+        width: 24px;
+        height: 24px;
+        border: 2px solid #333;
+        background: #000;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.1s;
+        image-rendering: pixelated;
+      }
+      .win-ctrl:hover {
+        border-color: #fff;
+        transform: scale(1.1);
+      }
+      .win-ctrl.min::after {
+        content: "";
+        width: 8px;
+        height: 2px;
+        background: #ffcc00;
+        box-shadow: 0 0 5px #ffcc00;
+      }
+      .win-ctrl.close::after {
+        content: "×";
+        color: #ff00aa;
+        font-family: "JetBrains Mono";
+        font-size: 20px;
+        line-height: 1;
+        font-weight: bold;
+        text-shadow: 0 0 5px #ff00aa;
+      }
+      .win-ctrl.close:hover {
+        background: rgba(255, 0, 170, 0.2);
+        border-color: #ff00aa;
+      }
+      .win-ctrl.min:hover {
+        background: rgba(255, 204, 0, 0.2);
+        border-color: #ffcc00;
+      }
+
+
+      /* Hover Tooltip */
+      #hover-summary-tooltip {
+          position: fixed;
+          background: rgba(5, 5, 8, 0.98);
+          border: 1px solid #00f0ff;
+          padding: 12px;
+          z-index: 9999;
+          pointer-events: none;
+          display: none;
+          width: 300px;
+          box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+          backdrop-filter: blur(10px);
+          font-family: 'JetBrains Mono', monospace;
+      }
+      #hover-summary-tooltip::before {
+          content: "";
+          position: absolute;
+          top: 0; left: 0; right: 0; height: 1px;
+          background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+      }
     </style>
-</head>
+  </head>
 
-<body>
-    <header class="header">
-        <div class="header-left">
-            <button class="btn btn-secondary btn-icon" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
-            <h1>🚀 GitHub Hub</h1>
-            <!-- Stats moved to Sidebar -->
-            <div class="header-stats" style="display:none"></div>
-            <!-- Progress Bar -->
-            <div id="progress-container" style="display:none; margin-left:1.5rem; width:200px;">
-                <div style="font-size:0.7rem; color:var(--text-secondary); margin-bottom:4px;">
-                    <span id="progress-text">0/0</span> <span id="progress-current" style="color:#3b82f6"></span>
-                </div>
-                <div style="background:var(--bg-card); border-radius:4px; height:6px; overflow:hidden;">
-                    <div id="progress-bar"
-                        style="background:linear-gradient(90deg, #3b82f6, #10b981); height:100%; width:0%; transition:width 0.3s;">
-                    </div>
-                </div>
+  <body
+    class="font-display antialiased h-screen flex flex-col selection:bg-cyber-cyan selection:text-black"
+  >
+    <!-- Background Matrix Rain Effect (Simple CSS/Canvas placeholder could go here) -->
+    <div
+      class="fixed inset-0 pointer-events-none z-0 opacity-20"
+      style="
+        background-image: radial-gradient(
+          circle at 50% 50%,
+          #121218 0%,
+          #050505 100%
+        );
+      "
+    ></div>
+
+    <!-- Header -->
+    <header
+      class="relative z-10 bg-cyber-dark/90 border-b border-cyber-border h-16 flex items-center justify-between px-6 backdrop-blur"
+    >
+      <div class="flex items-center gap-4">
+        <button
+          class="text-cyber-cyan hover:text-white transition-colors"
+          onclick="toggleSidebar()"
+        >
+          <span class="material-icons-round text-2xl">menu</span>
+        </button>
+        <div
+          class="flex items-center gap-2 group cursor-pointer"
+          onclick="switchTab('view-dashboard')"
+        >
+          <span
+            class="material-icons-round text-cyber-cyan text-2xl group-hover:animate-pulse"
+            >terminal</span
+          >
+          <span
+            class="font-mono font-bold text-xl tracking-tighter text-white group-hover:text-cyber-cyan transition-colors"
+            >GITHUB_HUB<span class="animate-pulse">_</span></span
+          >
+        </div>
+
+        <!-- Header Stats (Mini) -->
+        <div
+          class="hidden md:flex items-center gap-6 ml-8 border-l border-cyber-border pl-6"
+        >
+          <div class="flex flex-col">
+            <span
+              class="text-[10px] font-mono text-gray-500 uppercase tracking-widest"
+              >System Status</span
+            >
+            <span
+              class="text-xs font-mono text-cyber-green flex items-center gap-1"
+            >
+              <span
+                class="w-2 h-2 bg-cyber-green rounded-full animate-pulse"
+              ></span>
+              ONLINE
+            </span>
+          </div>
+          <!-- Progress Bar Area -->
+          <div id="progress-container" style="display: none; width: 200px">
+            <div
+              class="flex justify-between text-[10px] font-mono text-cyber-cyan mb-1"
+            >
+              <span id="progress-current">PROCESSING</span>
+              <span id="progress-text">0/0</span>
             </div>
+            <div class="cyber-progress-container">
+              <div id="progress-bar" class="cyber-progress-bar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <!-- Action Buttons -->
+        <div
+          class="flex items-center bg-cyber-panel border border-cyber-border rounded-sm p-1"
+        >
+          <button
+            onclick="switchTab('view-search')"
+            class="px-3 py-1 hover:bg-cyber-dim rounded-sm transition-colors text-gray-400 hover:text-cyber-cyan"
+            title="Neural Search"
+          >
+            <span class="material-icons-round text-lg">search</span>
+          </button>
+          <button
+            onclick="toggleManageMode()"
+            id="btn-manage"
+            class="px-3 py-1 hover:bg-cyber-dim rounded-sm transition-colors text-gray-400 hover:text-cyber-magenta"
+            title="Delete Mode"
+          >
+            <span class="material-icons-round text-lg">delete_sweep</span>
+          </button>
+          <button
+            onclick="toggleWindow('agent-window')"
+            class="px-3 py-1 hover:bg-cyber-dim rounded-sm transition-colors text-gray-400 hover:text-cyber-green"
+            title="Agent Monitor"
+          >
+            <span class="material-icons-round text-lg">smart_toy</span>
+          </button>
+          <button
+            onclick="toggleWindow('terminal-window')"
+            class="px-3 py-1 hover:bg-cyber-dim rounded-sm transition-colors text-gray-400 hover:text-white"
+            title="System Logs"
+          >
+            <span class="material-icons-round text-lg">dvr</span>
+          </button>
         </div>
 
-        <div class="header-center" style="display: flex; gap: 0.5rem; justify-content: center;">
-            <button class="btn btn-secondary nav-tab active" id="tab-dashboard" onclick="switchTab('view-dashboard')">📊
-                Dashboard</button>
-            <button class="btn btn-secondary nav-tab" id="tab-search" onclick="switchTab('view-search')">🔍
-                Search</button>
-        </div>
+        <button
+          onclick="startScan()"
+          class="bg-cyber-cyan hover:bg-cyan-400 text-black font-mono font-bold text-xs px-5 py-2 rounded-sm shadow-neon-cyan flex items-center gap-2 transition-all active:scale-95"
+        >
+          <span class="material-icons-round text-sm">radar</span> INIT_SCAN
+        </button>
 
-        <div class="header-right">
-            <button class="btn btn-secondary btn-icon" onclick="openSettings()" title="Settings">⚙️</button>
-            <button class="btn btn-secondary" onclick="toggleManageMode()" id="btn-manage"
-                title="Toggle Delete Mode">✏️</button>
-            <button class="btn btn-secondary btn-icon" onclick="toggleWindow('agent-window')"
-                title="Agent Monitor">🤖</button>
-            <button class="btn btn-secondary btn-icon" onclick="toggleWindow('terminal-window')"
-                title="Terminal Log">💻</button>
-            <button class="btn btn-secondary" onclick="exportData()" title="Export Data">💾</button>
-            <button class="btn btn-primary" onclick="startScan()" title="Start Scan">🔄 扫描</button>
-            <button class="btn btn-secondary btn-icon" onclick="promptAddProject()"
-                title="Add Project by URL">➕</button>
-        </div>
+        <button
+          onclick="openSettings()"
+          class="text-gray-500 hover:text-white transition-colors"
+        >
+          <span class="material-icons-round">settings</span>
+        </button>
+      </div>
     </header>
 
-    <!-- Agent Monitor Window -->
-    <!-- Agent Monitor Window -->
-    <div id="agent-window" class="floating-window">
-        <div class="window-header" id="agent-header">
-            <div class="window-title"><span>🤖</span> Agent Mission Control</div>
-            <div class="window-controls">
-                <button class="win-btn win-min" onclick="toggleWindow('agent-window')"></button>
-                <button class="win-btn win-close" onclick="toggleWindow('agent-window')"></button>
+    <div class="flex flex-1 overflow-hidden relative z-10">
+      <!-- Sidebar -->
+      <aside
+        id="main-sidebar"
+        class="w-64 bg-cyber-black border-r border-cyber-border flex flex-col transition-all duration-300 transform translate-x-0"
+      >
+        <!-- Sidebar Stats -->
+        <div class="p-6 border-b border-cyber-border bg-cyber-panel/50">
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div
+              class="bg-cyber-black p-3 border border-cyber-border rounded-sm neon-border group"
+            >
+              <div
+                class="text-2xl font-mono font-bold text-white group-hover:text-cyber-cyan transition-colors"
+                id="sidebar-stat-total"
+              >
+                0
+              </div>
+              <div
+                class="text-[10px] text-gray-500 uppercase tracking-widest mt-1"
+              >
+                Total Nodes
+              </div>
             </div>
+            <div
+              class="bg-cyber-black p-3 border border-cyber-border rounded-sm neon-border group"
+            >
+              <div
+                class="text-2xl font-mono font-bold text-cyber-green"
+                id="sidebar-stat-analyzed"
+              >
+                0
+              </div>
+              <div
+                class="text-[10px] text-gray-500 uppercase tracking-widest mt-1"
+              >
+                Analyzed
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-between text-xs font-mono text-gray-500">
+            <span class="flex items-center gap-1"
+              >PENDING:
+              <span id="sidebar-stat-pending" class="text-cyber-magenta"
+                >0</span
+              ></span
+            >
+            <span class="flex items-center gap-1"
+              >STARS:
+              <span id="sidebar-stat-stars" class="text-white">0</span></span
+            >
+          </div>
         </div>
 
-        <div class="agent-toolbar">
-            <button class="btn btn-primary" onclick="startScan()" style="justify-content:center">▶ Full Scan</button>
-            <button class="btn btn-secondary" onclick="triggerNewsScan()" style="justify-content:center">📰 Discover
-                News</button>
-            <button class="btn btn-secondary" onclick="startBatchAnalysis()" style="justify-content:center">🧠 Batch
-                Analyze</button>
-            <button class="btn btn-secondary" onclick="openSettings()" style="justify-content:center">⚙️
-                Settings</button>
+        <!-- Nav Items -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-1 hide-scrollbar">
+          <div
+            class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-3 pl-2"
+          >
+            System Modules
+          </div>
+
+          <div
+            class="category-item p-2 rounded-sm cursor-pointer flex items-center gap-3 text-sm text-gray-400"
+            onclick="
+              switchTab('view-search');
+              handleChatSubmit('conversational', 'Help me find a project');
+            "
+          >
+            <span class="material-icons-round text-cyber-magenta"
+              >psychology</span
+            >
+            AI_ASSISTANT
+          </div>
+          <div
+            class="category-item p-2 rounded-sm cursor-pointer flex items-center gap-3 text-sm text-gray-400"
+            onclick="
+              switchTab('view-search');
+              showSourceBoard();
+              loadNewsSources();
+            "
+          >
+            <span class="material-icons-round text-cyber-cyan">public</span>
+            NET_DISCOVERY
+          </div>
+
+          <div
+            class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mt-6 mb-3 pl-2"
+          >
+            Data Categories
+          </div>
+          <div id="categories" class="space-y-1">
+            <!-- Categories injected via JS -->
+          </div>
         </div>
 
-        <div class="agent-list" style="overflow-y:auto; flex:1">
-            <!-- Master Agent -->
-            <div class="agent-item" id="agent-master">
-                <div class="agent-icon">👑</div>
-                <div class="agent-info">
-                    <div class="agent-name">Master Supervisor</div>
-                    <div class="agent-status">Idle</div>
-                </div>
-                <div style="width:8px; height:8px; border-radius:50%; background:#3fb950; display:none"
-                    class="active-indicator"></div>
-            </div>
-
-            <!-- Crawler Agent -->
-            <div class="agent-item" id="agent-crawler">
-                <div class="agent-icon">🕷️</div>
-                <div class="agent-info">
-                    <div class="agent-name">Crawler Agent</div>
-                    <div class="agent-status">Idle</div>
-                </div>
-            </div>
-
-            <!-- Analyzer Agent -->
-            <div class="agent-item" id="agent-analyzer">
-                <div class="agent-icon">🧠</div>
-                <div class="agent-info">
-                    <div class="agent-name">Analyzer Agent</div>
-                    <div class="agent-status">Idle</div>
-                </div>
-            </div>
+        <!-- Quick Add -->
+        <div class="p-4 border-t border-cyber-border">
+          <button
+            onclick="promptAddProject()"
+            class="w-full border border-dashed border-gray-700 text-gray-500 hover:border-cyber-cyan hover:text-cyber-cyan py-2 text-xs font-mono uppercase tracking-widest transition-all"
+          >
+            + Ingest URL
+          </button>
         </div>
-    </div>
+      </aside>
 
-    <!-- Terminal Window -->
-    <div id="terminal-window" class="floating-window">
-        <div class="window-header" id="terminal-header">
-            <div class="window-title"><span>💻</span> System Terminal</div>
-            <div class="window-controls">
-                <button class="win-btn win-min" onclick="toggleWindow('terminal-window')"></button>
-                <button class="win-btn win-close" onclick="toggleWindow('terminal-window')"></button>
+      <!-- Main Content Area -->
+      <main
+        class="flex-1 relative bg-cyber-black overflow-hidden flex flex-col"
+      >
+        <!-- View: Dashboard -->
+        <div
+          id="view-dashboard"
+          class="view-section flex-1 overflow-y-auto p-8 hide-scrollbar bg-[url('https://transparenttextures.com/patterns/carbon-fibre.png')]"
+        >
+          <div
+            class="flex justify-between items-end mb-6 border-b border-cyber-border pb-4"
+          >
+            <div>
+              <div
+                class="text-cyber-cyan font-mono text-xs mb-1 tracking-widest"
+              >
+                CURRENT SECTOR
+              </div>
+              <h2
+                id="current-category"
+                class="text-3xl font-display font-bold text-white uppercase"
+              >
+                Initializing...
+              </h2>
             </div>
+            <button
+              onclick="refreshCategory()"
+              class="text-gray-500 hover:text-white transition-colors"
+            >
+              <span class="material-icons-round animate-spin-slow">sync</span>
+            </button>
+          </div>
+
+          <!-- Projects Grid -->
+          <div
+            id="projects"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          >
+            <!-- Cards injected via JS -->
+            <div
+              class="col-span-full flex flex-col items-center justify-center py-20 text-gray-600"
+            >
+              <span class="material-icons-round text-4xl mb-4 animate-spin"
+                >hourglass_empty</span
+              >
+              <span class="font-mono text-sm tracking-widest"
+                >ESTABLISHING UPLINK...</span
+              >
+            </div>
+          </div>
         </div>
-        <div class="terminal-content" id="terminal-content">
-            <!-- Logs -->
-        </div>
-    </div>
 
-    <!-- Search Result Modal -->
-    <div class="modal" id="search-modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:1rem; align-items:center;">
-                <h3 style="font-size:1.25rem; display:flex; align-items:center; gap:0.5rem">
-                    <span>🤖</span> Agent Recommendation
-                </h3>
-                <button onclick="document.getElementById('search-modal').classList.remove('active')"
-                    style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer">&times;</button>
-            </div>
-            <div id="search-loading" style="display:none; text-align:center; padding:2rem;">
-                <div class="spinner"></div>
-                <p style="margin-top:1rem; color:var(--text-secondary)">Analyzing your request...</p>
-            </div>
-            <div id="search-results-content" style="display:none;">
-                <div class="ai-recommendation" id="ai-recommendation"
-                    style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); 
-                            padding:1rem; border-radius:8px; margin-bottom:1.5rem; line-height:1.6; white-space:pre-wrap;"></div>
-                <h4
-                    style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem; text-transform:uppercase; letter-spacing:0.05em;">
-                    Matched Projects</h4>
-                <div class="projects-grid" id="search-projects-grid"
-                    style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="view-dashboard" class="view-section active">
-        <main class="main">
-            <aside class="sidebar collapsed" id="main-sidebar">
-                <!-- Navigation -->
-                <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
-                    <div class="category-item"
-                        onclick="switchTab('view-search'); handleChatSubmit('conversational', 'Help me find a project')">
-                        <span style="margin-right:8px">🤖</span> Ask AI Agent
-                    </div>
-                    <div class="category-item" onclick="switchTab('view-search'); showSourceBoard(); loadNewsSources()">
-                        <span style="margin-right:8px">🌍</span> Discovery Hub
-                    </div>
-                    <div class="category-item" onclick="toggleWindow('agent-window')">
-                        <span style="margin-right:8px">⚙️</span> System / Agent
-                    </div>
-                </div>
-
-                <!-- Stats Summary -->
-                <div id="sidebar-stats"
-                    style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
-                        <div style="background:var(--bg-card); padding:0.75rem; border-radius:8px; text-align:center;">
-                            <div style="font-size:1.1rem; font-weight:600;" id="sidebar-stat-total">0</div>
-                            <div style="font-size:0.65rem; color:var(--text-secondary); text-transform:uppercase;">Total
-                            </div>
-                        </div>
-                        <div style="background:var(--bg-card); padding:0.75rem; border-radius:8px; text-align:center;">
-                            <div style="font-size:1.1rem; font-weight:600; color:#3fb950" id="sidebar-stat-analyzed">0
-                            </div>
-                            <div style="font-size:0.65rem; color:var(--text-secondary); text-transform:uppercase;">
-                                Analyzed</div>
-                        </div>
-                    </div>
-                    <div
-                        style="margin-top:0.75rem; display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); padding:0 0.5rem;">
-                        <span>Pending: <span id="sidebar-stat-pending" style="color:#f59e0b">0</span></span>
-                        <span>Stars: <span id="sidebar-stat-stars">0</span></span>
-                    </div>
-                </div>
-
-                <h3>项目分类</h3>
-                <div id="categories"></div>
-            </aside>
-
-            <section class="content">
-                <div class="content-header" style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                    <h2 id="current-category">选择一个分类</h2>
-                    <button class="btn btn-secondary" onclick="refreshCategory()">刷新</button>
-                </div>
-                <div class="projects-grid" id="projects">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        <p>Ready to explore</p>
-                    </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Search View (Conversational) -->
-    <div id="view-search" class="view-section"
-        style="display:none; padding:2rem; max-width:1200px; margin:0 auto; height: calc(100vh - 64px); overflow-y: auto; flex-direction:column;">
-
-        <!-- Chat Area -->
-        <div id="chat-container"
-            style="flex:0 0 auto; margin-bottom:1.5rem; max-width:800px; margin-left:auto; margin-right:auto; width:100%;">
-            <div style="text-align:center; margin-bottom:2rem;">
+        <!-- View: Search / Discovery -->
+        <div
+          id="view-search"
+          class="view-section hidden flex-1 overflow-y-auto p-0 flex-col bg-cyber-black"
+        >
+          <div
+            class="flex-0 p-8 border-b border-cyber-border bg-cyber-panel/30"
+          >
+            <div class="max-w-4xl mx-auto w-full">
+              <div class="text-center mb-8">
                 <h1
-                    style="font-size:2rem; background: linear-gradient(135deg, #fff 0%, #3b82f6 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
-                    Talk to Search
+                  class="text-4xl font-bold font-display text-white mb-2 tracking-tight"
+                >
+                  NEURAL SEARCH 2.0
                 </h1>
-                <p style="color:var(--text-secondary);">Chat with AI to refine your need, then search hybrid sources.
+                <p class="text-gray-500 font-mono text-xs">
+                  HYBRID RETRIEVAL // AI REFINEMENT // REAL-TIME INDEXING
                 </p>
-            </div>
+              </div>
 
-            <div id="chat-history"
-                style="min-height:100px; margin-bottom:1rem; display:flex; flex-direction:column; gap:1rem;">
-                <!-- Messages go here -->
-                <div class="chat-msg system">
-                    <div class="msg-bubble system">👋 Hi! What kind of project are you looking for today?</div>
+              <!-- Search Box -->
+              <div class="relative group">
+                <div
+                  class="absolute -inset-0.5 bg-gradient-to-r from-cyber-cyan to-cyber-magenta rounded-lg opacity-30 group-hover:opacity-75 transition duration-500 blur"
+                ></div>
+                <div
+                  class="relative flex items-center bg-cyber-black rounded-lg border border-cyber-border p-2"
+                >
+                  <span class="material-icons-round text-gray-500 ml-3"
+                    >terminal</span
+                  >
+                  <input
+                    type="text"
+                    id="chat-input"
+                    class="w-full bg-transparent border-none text-white font-mono placeholder-gray-700 focus:ring-0 px-4 py-2"
+                    placeholder="Enter query parameters or natural language command..."
+                    onkeypress="
+                      if (event.key === 'Enter') handleChatSubmit('direct');
+                    "
+                  />
+
+                  <div class="flex gap-2 pr-2">
+                    <button
+                      onclick="handleChatSubmit('conversational')"
+                      class="p-2 text-cyber-magenta hover:bg-cyber-magenta/10 rounded-md transition-colors"
+                      title="AI Agent"
+                    >
+                      <span class="material-icons-round">psychology</span>
+                    </button>
+                    <button
+                      onclick="handleChatSubmit('direct')"
+                      class="p-2 text-cyber-cyan hover:bg-cyber-cyan/10 rounded-md transition-colors"
+                      title="Direct Search"
+                    >
+                      <span class="material-icons-round">search</span>
+                    </button>
+                  </div>
                 </div>
-            </div>
+              </div>
 
-            <div style="position:relative;">
-                <input type="text" id="chat-input" placeholder="Type a topic (e.g. 'local RAG')..."
-                    style="width:100%; padding:1rem 6.5rem 1rem 1.5rem; font-size:1.1rem; background:var(--bg-card); border:1px solid var(--border); border-radius:30px; color:white; box-shadow:0 4px 20px rgba(0,0,0,0.2); outline:none; transition:all 0.3s;"
-                    onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
-                    onkeypress="if(event.key === 'Enter') handleChatSubmit('direct')">
+              <!-- Chat History -->
+              <div
+                id="chat-history"
+                class="mt-6 space-y-4 max-h-[300px] overflow-y-auto hide-scrollbar font-mono text-sm"
+              >
+                <div class="flex justify-start">
+                  <div
+                    class="bg-cyber-panel border border-cyber-border text-gray-400 px-4 py-3 rounded-tr-xl rounded-br-xl rounded-bl-xl max-w-[80%]"
+                  >
+                    <span class="text-cyber-cyan mr-2">></span> System
+                    initialized. Awaiting input.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="search-results-area" class="flex-1 p-8 overflow-y-auto">
+            <div class="max-w-6xl mx-auto">
+              <!-- Source Board Panel -->
+              <div
+                id="source-board-panel"
+                class="hidden mb-8 bg-cyber-panel/50 border border-cyber-border p-6 rounded-lg"
+              >
+                <div class="flex justify-between items-center mb-6">
+                  <h3
+                    class="text-xl font-display font-bold text-white flex items-center gap-2"
+                  >
+                    <span class="material-icons-round text-cyber-green"
+                      >public</span
+                    >
+                    DISCOVERY NODES
+                  </h3>
+                  <button
+                    onclick="toggleSourceBoard()"
+                    class="text-gray-500 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      id="new-source-name"
+                      placeholder="NODE_ID (Name)"
+                      class="bg-cyber-black border border-cyber-border text-white text-xs p-2 rounded-sm w-1/3 placeholder-gray-700 focus:border-cyber-cyan focus:ring-0"
+                    />
+                    <input
+                      type="text"
+                      id="new-source-url"
+                      placeholder="Protocol Address (URL)"
+                      class="bg-cyber-black border border-cyber-border text-white text-xs p-2 rounded-sm flex-1 placeholder-gray-700 focus:border-cyber-cyan focus:ring-0"
+                    />
+                    <button
+                      onclick="addNewsSource()"
+                      class="bg-gray-800 hover:bg-cyber-cyan hover:text-black text-white px-3 rounded-sm transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      id="discovery-url"
+                      placeholder="Quick Scan Target URL..."
+                      class="bg-cyber-black border border-cyber-border text-white text-xs p-2 rounded-sm flex-1 placeholder-gray-700 focus:border-cyber-cyan focus:ring-0"
+                    />
+                    <button
+                      onclick="scanNewsSource()"
+                      class="bg-cyber-dim border border-cyber-border text-cyber-cyan hover:bg-cyber-cyan hover:text-black px-4 text-xs font-mono uppercase rounded-sm transition-colors"
+                    >
+                      SCAN
+                    </button>
+                  </div>
+                </div>
 
                 <div
-                    style="position:absolute; right:8px; top:50%; transform:translateY(-50%); display:flex; gap:0.5rem;">
-                    <button onclick="handleChatSubmit('direct')" title="Direct Search"
-                        style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border); width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s;">
-                        🔍
-                    </button>
-                    <button onclick="handleChatSubmit('conversational')" title="Ask AI Agent"
-                        style="background:var(--accent); color:white; border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(59, 130, 246, 0.4);">
-                        🤖
-                    </button>
+                  id="sources-board"
+                  class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 max-h-[300px] overflow-y-auto"
+                ></div>
+
+                <div
+                  id="discovery-results-container"
+                  class="hidden border-t border-cyber-border pt-6"
+                >
+                  <div class="flex items-center gap-2 mb-4">
+                    <span class="text-cyber-green font-mono text-sm"
+                      >>> NEW SIGNALS DETECTED:</span
+                    >
+                    <span
+                      id="discovery-count"
+                      class="bg-cyber-green text-black text-xs font-bold px-2 py-0.5 rounded-sm"
+                      >0</span
+                    >
+                  </div>
+                  <div
+                    id="discovery-results"
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  ></div>
                 </div>
+              </div>
+
+              <!-- Search Results -->
+              <div
+                id="ai-insight-block"
+                class="hidden mb-8 neon-border bg-cyber-panel/80 p-6 rounded-lg"
+              ></div>
+              <div
+                id="results-grid"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+              ></div>
             </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Floating Windows -->
+
+    <!-- Agent Window -->
+    <div id="agent-window" class="floating-window top-20 right-8 w-96 h-[500px] border-l-4 border-l-cyber-cyan">
+        <div class="window-header" id="agent-header">
+            <div class="window-title flex items-center gap-2">
+                <span class="material-icons-round text-sm animate-pulse">smart_toy</span> 
+                AGENT_OP_CENTER <span class="text-[10px] text-gray-500">v2.0</span>
+            </div>
+            <div class="flex gap-1">
+                <button class="win-ctrl min" onclick="toggleWindow('agent-window')"></button>
+                <button class="win-ctrl close" onclick="toggleWindow('agent-window')"></button>
+            </div>
+        </div>
+        <div class="p-4 grid grid-cols-2 gap-2 border-b border-cyber-border bg-[#050505] relative">
+            <div class="absolute inset-0 bg-cyber-dim pointer-events-none opacity-20" style="background-image: repeating-linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), repeating-linear-gradient(45deg, #000 25%, #00f0ff 25%, #00f0ff 75%, #000 75%, #000); background-position: 0 0, 10px 10px; background-size: 20px 20px;"></div>
+            
+            <button onclick="startScan()" class="relative bg-cyber-dark border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black text-[10px] font-mono py-2 rounded-sm transition-all group overflow-hidden">
+                <span class="relative z-10">FULL_SCAN_SEQ</span>
+                <div class="absolute inset-0 bg-cyber-cyan opacity-20 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+            </button>
+            <button onclick="startBatchAnalysis()" class="relative bg-cyber-dark border border-cyber-magenta text-cyber-magenta hover:bg-cyber-magenta hover:text-black text-[10px] font-mono py-2 rounded-sm transition-all group">
+                <span class="relative z-10">BATCH_ANALYZE</span>
+            </button>
+            <button onclick="triggerNewsScan()" class="bg-gray-900 border border-gray-700 text-gray-400 hover:border-white hover:text-white text-[10px] font-mono py-2 rounded-sm transition-colors">DISCOVERY_PROTO</button>
+            <button onclick="openSettings()" class="bg-gray-900 border border-gray-700 text-gray-400 hover:border-white hover:text-white text-[10px] font-mono py-2 rounded-sm transition-colors">SYS_CONFIG</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-0 bg-[#08080a] relative">
+             <div class="absolute inset-0 pointer-events-none scanlines z-10 opacity-30"></div>
+             <!-- Agents List -->
+        <div
+          id="agent-master"
+          class="p-4 border-b border-cyber-border flex items-center gap-4 transition-colors"
+        >
+          <div
+            class="w-10 h-10 bg-cyber-panel border border-cyber-border rounded flex items-center justify-center text-xl"
+          >
+            👑
+          </div>
+          <div class="flex-1">
+            <div class="text-sm font-bold text-white font-display">
+              MASTER_CONTROL
+            </div>
+            <div class="text-xs font-mono text-gray-600 agent-status">IDLE</div>
+          </div>
+          <div
+            class="w-2 h-2 rounded-full bg-gray-800 active-indicator transition-colors"
+          ></div>
         </div>
 
         <div
-            style="margin-top: 1rem; display: flex; justify-content: center; gap: 1rem; animation: fadeIn 0.5s ease-out;">
-            <button class="btn btn-secondary" onclick="showSourceBoard(); loadNewsSources()"
-                style="font-size: 0.85rem; border-radius: 20px; border-color: var(--border); background: rgba(255,255,255,0.05);">
-                🌍 Open Discovery Source Board
-            </button>
+          id="agent-crawler"
+          class="p-4 border-b border-cyber-border flex items-center gap-4 transition-colors"
+        >
+          <div
+            class="w-10 h-10 bg-cyber-panel border border-cyber-border rounded flex items-center justify-center text-xl"
+          >
+            🕷️
+          </div>
+          <div class="flex-1">
+            <div class="text-sm font-bold text-white font-display">
+              CRAWLER_UNIT
+            </div>
+            <div class="text-xs font-mono text-gray-600 agent-status">IDLE</div>
+          </div>
         </div>
 
-        <hr style="border:0; border-top:1px solid var(--border); margin:1rem 0; width:100%; opacity:0.5">
-
-        <!-- Source Board Panel (Collapsible) -->
-        <div id="source-board-panel"
-            style="display:none; margin-bottom:2rem; background:var(--bg-card); border-radius:12px; border:1px solid var(--border); padding:1.5rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h3 style="font-size:1.2rem; display:flex; align-items:center; gap:0.5rem;">
-                    🌍 Source Board
-                </h3>
-                <button onclick="toggleSourceBoard()" class="btn btn-secondary" style="padding:4px 12px;">✕
-                    Close</button>
+        <div
+          id="agent-analyzer"
+          class="p-4 border-b border-cyber-border flex items-center gap-4 transition-colors"
+        >
+          <div
+            class="w-10 h-10 bg-cyber-panel border border-cyber-border rounded flex items-center justify-center text-xl"
+          >
+            🧠
+          </div>
+          <div class="flex-1">
+            <div class="text-sm font-bold text-white font-display">
+              NEURAL_ANALYZER
             </div>
+            <div class="text-xs font-mono text-gray-600 agent-status">IDLE</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-            <!-- Add Source -->
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
-                <div style="display:flex; gap:0.5rem;">
-                    <input type="text" id="new-source-name" placeholder="Name"
-                        style="width:30%; padding:0.5rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; color:white; font-size:0.85rem;">
-                    <input type="text" id="new-source-url" placeholder="URL"
-                        style="flex:1; padding:0.5rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; color:white; font-size:0.85rem;">
-                    <button onclick="addNewsSource()" class="btn btn-primary" style="padding:0.5rem 1rem;">➕</button>
-                </div>
-                <div style="display:flex; gap:0.5rem;">
-                    <input type="text" id="discovery-url" placeholder="Quick scan any URL..."
-                        style="flex:1; padding:0.5rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; color:white; font-size:0.85rem;">
-                    <button onclick="scanNewsSource()" class="btn btn-primary" style="padding:0.5rem 1rem;">🚀
-                        Scan</button>
-                </div>
+    <!-- Terminal Window -->
+    <div id="terminal-window" class="floating-window bottom-8 right-8 w-[600px] h-[350px] border-l-4 border-l-cyber-magenta">
+        <div class="window-header" id="terminal-header">
+            <div class="window-title flex items-center gap-2">
+                <span class="material-icons-round text-sm text-cyber-magenta">terminal</span> 
+                SYSTEM_LOG <span class="animate-pulse">_</span>
             </div>
-
-            <!-- Sources Grid -->
-            <div id="sources-board"
-                style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:1rem; max-height:300px; overflow-y:auto;">
-                <div style="text-align:center; padding:1rem; color:var(--text-secondary); grid-column:1/-1;">Click "🌍
-                    Discovery Hub" to load sources</div>
-            </div>
-
-            <!-- Discovery Results -->
-            <div id="discovery-results-container"
-                style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
-                <h4 style="font-size:1rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
-                    🕵️ Discovered Projects <span id="discovery-count"
-                        style="font-size:0.8rem; background:var(--bg-secondary); padding:2px 6px; border-radius:8px;"></span>
-                </h4>
-                <div id="discovery-results" style="max-height:400px; overflow-y:auto;"></div>
+            <div class="flex gap-1">
+                <button class="win-ctrl min" onclick="toggleWindow('terminal-window')"></button>
+                <button class="win-ctrl close" onclick="toggleWindow('terminal-window')"></button>
             </div>
         </div>
-
-        <!-- Results Area -->
-        <div id="search-results-area" style="flex:1;">
-            <div id="ai-insight-block" style="display:none; margin-bottom:2rem;"></div>
-            <div id="results-grid" class="projects-grid"
-                style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1.5rem;"></div>
+        <div id="terminal-content" class="flex-1 bg-[#050505] p-4 overflow-y-auto font-mono text-[11px] text-gray-400 space-y-1 relative">
+            <div class="absolute inset-0 pointer-events-none scanlines z-10 opacity-20"></div>
+            <!-- Logs go here -->
+            <div class="log-entry relative z-20"><span class="text-gray-600">[SYSTEM]</span> <span class="text-cyber-cyan">Interface initialized. Link established.</span></div>
         </div>
     </div>
 
-    <!-- Discovery View removed - integrated into view-search -->
+    <!-- Modals -->
 
-    <!-- Modal (Tutorial) -->
-    <div class="modal" id="tutorial-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modal-title" style="font-size:1.5rem; margin:0"></h3>
-                <button onclick="closeModal()"
-                    style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:4px;">&times;</button>
+    <!-- Tutorial Modal -->
+    <!-- Tutorial/Summary Window (Restored as Floating Window) -->
+    <div id="tutorial-modal" class="floating-window top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] border-l-4 border-l-cyber-magenta">
+        <div class="window-header">
+            <div class="window-title flex items-center gap-2">
+                <span class="material-icons-round text-sm text-cyber-magenta">library_books</span> 
+                <span id="modal-title">ANALYSIS_MATRIX</span>
             </div>
-            <div class="tutorial-content" id="tutorial-content" style="line-height:1.6"></div>
+            <div class="flex gap-1">
+                <button class="win-ctrl min" onclick="closeModal()"></button>
+                <button class="win-ctrl close" onclick="closeModal()"></button>
+            </div>
+        </div>
+        <div id="tutorial-content" class="flex-1 bg-[#050505] p-8 overflow-y-auto leading-relaxed markdown-content relative">
+            <div class="absolute inset-0 pointer-events-none scanlines z-10 opacity-10"></div>
+            <!-- Content Injected Here -->
         </div>
     </div>
 
-    <!--Settings Modal-->
-    <div class="modal" id="settings-modal" onclick="closeSettingsIfOutside(event)">
-        <div class="modal-content" style="width: 400px; min-height: auto;">
-            <div class="modal-header">
-                <h2>⚙️ Settings</h2>
-                <button class="close-modal" onclick="closeSettings()">×</button>
-            </div>
-            <div style="padding: 1.5rem;">
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display:block; margin-bottom:0.5rem; color:var(--text-secondary)">📅 Automatic Daily
-                        Scan Time</label>
-                    <input type="time" id="setting-scan-time"
-                        style="width:100%; padding:0.5rem; background:var(--bg-primary); border:1px solid var(--border); color: var(--text-primary); border-radius:4px;">
-                </div>
-                <button class="btn btn-primary" onclick="saveSettings()" style="width:100%">Save Configuration</button>
-            </div>
+    <!-- Settings Modal -->
+    <div
+      id="settings-modal"
+      class="modal fixed inset-0 z-50 hidden flex items-center justify-center"
+      onclick="closeSettingsIfOutside(event)"
+    >
+      <div class="modal-content w-[400px] rounded-lg overflow-hidden p-6">
+        <h2
+          class="text-xl font-display font-bold text-white mb-6 border-b border-cyber-border pb-2"
+        >
+          SYSTEM CONFIG
+        </h2>
+        <div class="mb-6">
+          <label class="text-xs font-mono text-cyber-cyan mb-2 block uppercase"
+            >Auto-Scan Schedule</label
+          >
+          <input
+            type="time"
+            id="setting-scan-time"
+            class="w-full bg-cyber-black border border-cyber-border text-white rounded p-2 focus:ring-1 focus:ring-cyber-cyan focus:border-cyber-cyan outline-none"
+          />
         </div>
+        <button
+          onclick="saveSettings()"
+          class="w-full bg-cyber-cyan text-black font-bold font-mono py-2 rounded-sm hover:bg-cyan-400 transition-colors"
+        >
+          SAVE_CONFIG
+        </button>
+      </div>
     </div>
 
+    <!-- Search Modal (Legacy, mapped to view-search but kept for existing JS compatibility calls) -->
+    <div id="search-modal" class="hidden"></div>
+
+
+    <!-- Hover Summary Tooltip -->
+    <div id="hover-summary-tooltip"></div>
+
+    <!-- Javascript Logic Preserved -->
     <script>
-        const API = '';  // Use relative path for Vercel deployment
-        const isReadOnly = !['localhost', '127.0.0.1'].includes(window.location.hostname);
+      const API = "";
+      const isReadOnly = !["localhost", "127.0.0.1"].includes(
+        window.location.hostname,
+      );
+      let currentCategory = null;
+      const chatHistory = [];
+      let isSearching = false;
 
-        if (isReadOnly) {
-            document.body.classList.add('read-only-mode');
-            console.log("Running in Read-Only mode on Vercel.");
+      // --- Core UI Functions ---
+
+      function toggleSidebar() {
+        const sidebar = document.getElementById("main-sidebar");
+        if (sidebar.classList.contains("-translate-x-full")) {
+          sidebar.classList.remove(
+            "-translate-x-full",
+            "w-0",
+            "p-0",
+            "overflow-hidden",
+          );
+          sidebar.classList.add("w-64");
+        } else {
+          if (sidebar.classList.contains("w-64")) {
+            sidebar.classList.remove("w-64");
+            sidebar.classList.add("w-0", "p-0", "overflow-hidden");
+          } else {
+            // Initial toggle logic if classes vary
+            sidebar.classList.toggle("hidden");
+          }
         }
+      }
 
-        let currentCategory = null;
+      // Simpler toggle for the Tailwind sidebar
+      document.getElementById("main-sidebar").style.transition =
+        "width 0.3s ease, padding 0.3s ease";
+      // Redefine to work with the specific style
+      window.toggleSidebar = function () {
+        const sb = document.getElementById("main-sidebar");
+        if (sb.style.width === "0px") {
+          sb.style.width = "16rem"; // w-64
+        } else {
+          sb.style.width = "0px";
+        }
+      };
 
-        // --- Conversational Search & Hybrid Logic ---
-        const chatHistory = [];
-        let isSearching = false;
+      function switchTab(tab) {
+        document
+          .querySelectorAll(".view-section")
+          .forEach((el) => el.classList.add("hidden"));
+        document.getElementById(tab).classList.remove("hidden");
+      }
 
-        function appendChat(role, text) {
-            const historyDiv = document.getElementById('chat-history');
-            const align = role === 'user' ? 'flex-end' : 'flex-start';
-            const bg = role === 'user' ? 'var(--accent)' : 'var(--bg-card)';
-            const color = 'white';
+      function toggleWindow(id) {
+        document.getElementById(id).classList.toggle("active");
+        // Z-index handling
+        document
+          .querySelectorAll(".floating-window")
+          .forEach((w) => (w.style.zIndex = 50));
+        document.getElementById(id).style.zIndex = 51;
+      }
 
-            const html = `
-                <div style="display:flex; justify-content:${align};">
-                    <div style="background:${bg}; color:${color}; padding:0.8rem 1.2rem; border-radius:18px; max-width:80%; line-height:1.5; font-size:0.95rem; box-shadow:0 2px 8px rgba(0,0,0,0.1)">
-                        ${(typeof marked !== 'undefined') ? marked.parse(text) : text}
+      function toggleSourceBoard() {
+        const panel = document.getElementById("source-board-panel");
+        panel.classList.toggle("hidden");
+      }
+
+      function showSourceBoard() {
+        document
+          .getElementById("source-board-panel")
+          .classList.remove("hidden");
+      }
+
+      function toggleManageMode() {
+        document.body.classList.toggle("manage-mode");
+        document
+          .getElementById("btn-manage")
+          .classList.toggle("text-cyber-magenta");
+        document.getElementById("btn-manage").classList.toggle("text-gray-400");
+      }
+
+      function openSettings() {
+        document.getElementById("settings-modal").classList.remove("hidden");
+        loadSettings();
+      }
+      function closeSettings() {
+        document.getElementById("settings-modal").classList.add("hidden");
+      }
+      function closeSettingsIfOutside(e) {
+        if (e.target.id === "settings-modal") closeSettings();
+      }
+
+      async function loadSettings() {
+        try {
+          const res = await fetch(`${API}/api/settings`);
+          const data = await res.json();
+          document.getElementById("setting-scan-time").value =
+            data.scan_time || "02:00";
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function saveSettings() {
+        const time = document.getElementById("setting-scan-time").value;
+        try {
+          await fetch(`${API}/api/settings`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ scan_time: time }),
+          });
+          addLog(`Config updated: Auto-scan at ${time}`, "success");
+          closeSettings();
+        } catch (e) {
+          alert("Failed to save settings");
+        }
+      }
+
+      // --- Data Loading & Rendering ---
+
+      async function loadCategories() {
+        try {
+          const res = await fetch(`${API}/api/categories`);
+          const categories = await res.json();
+          const container = document.getElementById("categories");
+
+          container.innerHTML = Object.entries(categories)
+            .map(
+              ([id, cat]) => `
+                    <div class="category-item p-2 rounded-sm cursor-pointer flex items-center justify-between text-sm text-gray-400 font-mono" id="cat-item-${id}" onclick="selectCategory('${id}')">
+                        <span class="flex items-center gap-2"><span class="text-xs text-gray-600">#</span> ${cat.name}</span>
+                        <span class="text-[10px] bg-cyber-panel px-1.5 py-0.5 rounded text-gray-500" id="count-${id}">...</span>
                     </div>
-                </div>
-            `;
-            historyDiv.insertAdjacentHTML('beforeend', html);
-            historyDiv.scrollTop = historyDiv.scrollHeight;
-
-            chatHistory.push({ role, content: text });
-        }
-
-        async function handleChatSubmit(mode = 'conversational', manualText = null) {
-            const input = document.getElementById('chat-input');
-            const text = manualText || input.value.trim();
-            if (!text) return;
-
-            if (!manualText) input.value = '';
-            appendChat('user', text);
-
-            // Direct Search Mode
-            if (mode === 'direct') {
-                appendChat('assistant', `🔍 **Direct Search**: Searching for "${text}"...`);
-                performHybridSearch(text);
-                return;
-            }
-
-            // Conversational Mode
-            // Show typing wrapper
-            const historyDiv = document.getElementById('chat-history');
-            const loadingId = 'typing-' + Date.now();
-            historyDiv.insertAdjacentHTML('beforeend', `<div id="${loadingId}" style="color:var(--text-secondary); font-size:0.8rem; margin-left:1rem;">Thinking...</div>`);
-
-            try {
-                const res = await fetch(`${API}/api/agent/refine`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ history: chatHistory })
-                });
-                const actionData = await res.json();
-
-                const loader = document.getElementById(loadingId);
-                if (loader) loader.remove();
-
-                if (actionData.action === 'question') {
-                    appendChat('assistant', actionData.content);
-                } else if (actionData.action === 'search') {
-                    appendChat('assistant', `✅ clear. Searching for: **${actionData.content}**`);
-                    performHybridSearch(actionData.content);
-                }
-            } catch (e) {
-                console.error(e);
-                const loader = document.getElementById(loadingId);
-                if (loader) loader.innerHTML = "Error: " + e.message;
-            }
-        }
-
-        function fillSearch(txt) {
-            handleChatSubmit('direct', txt);
-        }
-
-        async function performHybridSearch(query) {
-            const grid = document.getElementById('results-grid');
-            const insight = document.getElementById('ai-insight-block');
-
-            grid.innerHTML = '';
-            insight.style.display = 'block';
-            insight.innerHTML = `
-                <div style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); padding:1rem; border-radius:12px; display:flex; align-items:center; gap:1rem;">
-                    <div class="spinner" style="width:20px;height:20px;"></div>
-                    <span>Initializing Hybrid Search...</span>
-                </div>`;
-
-            let allProjects = [];
-            const processedIds = new Set();
-            isSearching = true;
-
-            function renderBatch(projects, source) {
-                if (!projects || projects.length === 0) return;
-
-                const newProjects = projects.filter(p => !processedIds.has(p.id));
-                newProjects.forEach(p => processedIds.add(p.id));
-
-                if (newProjects.length === 0) return;
-
-                allProjects = [...allProjects, ...newProjects];
-
-                // Update Insight status
-                insight.innerHTML = `
-                <div style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); padding:1rem; border-radius:12px; display:flex; align-items:center; gap:1rem;">
-                        <div class="spinner" style="width:20px;height:20px;"></div>
-                        <span>So far found ${allProjects.length} projects (Latest from ${source}). Analysis pending...</span>
-                </div>
-                `;
-
-                // Append results
-                grid.insertAdjacentHTML('beforeend', newProjects.map(p => renderProject(p)).join(''));
-            }
-
-            // 1. Local Search (Fast)
-            try {
-                const localRes = await fetch(`${API}/api/search/local`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query })
-                });
-                const localData = await localRes.json();
-                renderBatch(localData.results, "Local DB");
-            } catch (e) { console.error("Local search err", e); }
-
-            // 2. Remote Search (Slow) - Async
-            fetch(`${API}/api/search/remote`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query })
-            }).then(res => res.json()).then(data => {
-                renderBatch(data.results, "GitHub Live");
-
-                // 3. After remote results (or timeout), trigger AI Recommend
-                if (allProjects.length > 0) return fetch(`${API}/api/search/recommend`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query, projects: allProjects.slice(0, 10) })
-                });
-            }).then(res => {
-                if (res) return res.json();
-            }).then(data => {
-                if (data && data.recommendation) {
-                    insight.innerHTML = `
-                    <div class="ai-recommendation" style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); padding:1.5rem; border-radius:12px; line-height:1.6;">
-                        <h3 style="display:flex; align-items:center; gap:0.5rem; font-size:1.1rem; margin-bottom:1rem;">🤖 AI Insight</h3>
-                        ${(typeof marked !== 'undefined') ? marked.parse(data.recommendation) : data.recommendation}
-                    </div>`;
-                }
-            }).catch(e => {
-                console.error("Remote/Recommend err", e);
-                insight.innerHTML = `<div style="color:var(--text-secondary)">Search finished. Insight generation failed or timed out.</div>`;
-            }).finally(() => {
-                isSearching = false;
-            });
-        }
-
-
-        // Initialize Draggables
-        makeDraggable(document.getElementById("agent-window"));
-        makeDraggable(document.getElementById("terminal-window"));
-
-        // Force hide modal on load
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('search-modal').classList.remove('active');
-        });
-
-        function toggleManageMode() {
-            document.body.classList.toggle('manage-mode');
-            const btn = document.getElementById('btn-manage');
-            btn.classList.toggle('manage-active');
-        }
-
-        function switchTab(tab) {
-            // Hide all view sections first
-            document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
-
-            // Show the requested view with correct display type
-            const viewEl = document.getElementById(tab);
-            if (viewEl) {
-                // view-search uses flexbox layout
-                viewEl.style.display = (tab === 'view-search') ? 'flex' : 'block';
-            }
-        }
-
-
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById('main-sidebar');
-            sidebar.classList.toggle('collapsed');
-        }
-
-        function toggleSourceBoard() {
-            const panel = document.getElementById('source-board-panel');
-            if (panel) {
-                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-            }
-        }
-
-        function showSourceBoard() {
-            const panel = document.getElementById('source-board-panel');
-            if (panel) {
-                panel.style.display = 'block';
-            }
-        }
-
-        function toggleWindow(id) {
-            const el = document.getElementById(id);
-            if (el.classList.contains('active')) {
-                el.classList.remove('active');
-            } else {
-                el.classList.add('active');
-                // Bring to front
-                document.querySelectorAll('.floating-window').forEach(w => w.style.zIndex = 1000);
-                el.style.zIndex = 1001;
-            }
-        }
-
-        async function performSearch() {
-            const query = document.getElementById('search-input').value.trim();
-            if (!query) return;
-
-            const modal = document.getElementById('search-modal');
-            const loading = document.getElementById('search-loading');
-            const content = document.getElementById('search-results-content');
-
-            modal.classList.add('active');
-            loading.style.display = 'block';
-            content.style.display = 'none';
-
-            try {
-                const res = await fetch('/api/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query })
-                });
-                const data = await res.json();
-
-                document.getElementById('ai-recommendation').textContent = data.recommendation;
-                const grid = document.getElementById('search-projects-grid');
-
-                if (data.results && data.results.length > 0) {
-                    grid.innerHTML = data.results.map(p => renderProject(p)).join('');
-                } else {
-                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-secondary)">No direct matches found.</div>';
-                }
-
-                loading.style.display = 'none';
-                content.style.display = 'block';
-
-            } catch (e) {
-                loading.style.display = 'none';
-                alert('Search failed: ' + e.message);
-            }
-        }
-
-        function makeDraggable(elmnt) {
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-            const header = elmnt.querySelector('.window-header');
-            if (header) {
-                header.onmousedown = dragMouseDown;
-            }
-
-            function dragMouseDown(e) {
-                e = e || window.event;
-                e.preventDefault();
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                document.onmouseup = closeDragElement;
-                document.onmousemove = elementDrag;
-
-                // Bring to front on click
-                document.querySelectorAll('.floating-window').forEach(w => w.style.zIndex = 1000);
-                elmnt.style.zIndex = 1001;
-            }
-
-            function elementDrag(e) {
-                e = e || window.event;
-                e.preventDefault();
-                pos1 = pos3 - e.clientX;
-                pos2 = pos4 - e.clientY;
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
-            }
-
-            function closeDragElement() {
-                document.onmouseup = null;
-                document.onmousemove = null;
-            }
-        }
-
-        // Close panels when clicking outside (no longer needed for dropdowns, but good for general windows if desired)
-        // document.addEventListener('click', (e) => {
-        //     if (!e.target.closest('.header-right') && !e.target.closest('.panel-dropdown')) {
-        //         document.querySelectorAll('.panel-dropdown').forEach(p => p.classList.remove('active'));
-        //     }
-        // });
-
-        // 加载分类
-        async function loadCategories() {
-            try {
-                const res = await fetch(`${API}/api/categories`);
-                if (!res.ok) throw new Error('Failed to fetch categories');
-                const categories = await res.json();
-
-                const container = document.getElementById('categories');
-                container.innerHTML = Object.entries(categories).map(([id, cat]) => `
-                    <div class="category-item" id="cat-item-${id}" onclick="selectCategory('${id}')">
-                        ${cat.name}
-                        <span class="category-count" id="count-${id}">0</span>
-                    </div>
-                `).join('');
-
-                // Auto Select "trending" or first
-                const keys = Object.keys(categories);
-                if (keys.includes('trending')) {
-                    await selectCategory('trending');
-                } else if (keys.length > 0) {
-                    await selectCategory(keys[0]);
-                }
-
-                loadStats();
-            } catch (e) {
-                console.error('Init error:', e);
-                addLog('Initialization failed: ' + e.message, 'error');
-            }
-        }
-
-        async function loadStats() {
-            const res = await fetch(`${API}/api/stats`);
-            const stats = await res.json();
-            document.getElementById('sidebar-stat-total').textContent = stats.total_projects || 0;
-            document.getElementById('sidebar-stat-analyzed').textContent = stats.analyzed_projects || 0;
-            document.getElementById('sidebar-stat-stars').textContent = formatNumber(stats.total_stars || 0);
-
-            // Load pending count
-            const pendingRes = await fetch(`${API}/api/pending`);
-            const pendingData = await pendingRes.json();
-            document.getElementById('sidebar-stat-pending').textContent = pendingData.pending || 0;
-
-            const statusRes = await fetch(`${API}/api/status`);
-            const status = await statusRes.json();
-            if (status.categories) {
-                Object.entries(status.categories).forEach(([cat, count]) => {
-                    const el = document.getElementById(`count-${cat}`);
-                    if (el) el.textContent = count || 0;
-                });
-            }
-        }
-
-        async function selectCategory(category) {
-            currentCategory = category;
-
-            // Update Active State (Fixing the event crash)
-            document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
-            const activeEl = document.getElementById(`cat-item-${category}`);
-            if (activeEl) activeEl.classList.add('active');
-
-            const container = document.getElementById('projects');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loadling...</p></div>';
-
-            try {
-                const res = await fetch(`${API}/api/projects/${category}`);
-                if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
-
-                const projects = await res.json();
-
-                if (!Array.isArray(projects) || projects.length === 0) {
-                    container.innerHTML = '<div class="loading"><p>暂无项目。请点击左上角的 "刷新" 或使用 "➕" 添加项目。</p></div>';
-                    return;
-                }
-
-                let extraHtml = '';
-                if (category === 'trending') {
-                    const date = new Date();
-                    const weekStart = new Date(date.setDate(date.getDate() - date.getDay() + 1)).toLocaleDateString();
-                    extraHtml = `
-                <div class="trending-header" style="grid-column: 1/-1; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
-                    <h3 style="display:flex; align-items:center; gap:0.5rem; font-size:1.1rem; color:var(--text-primary)">
-                        🔥 This Week's Hottest <span style="font-size:0.8rem; font-weight:normal; color:var(--text-secondary); margin-left:auto">Week of ${weekStart}</span>
-                    </h3>
-                </div>
-                `;
-                }
-
-                container.innerHTML = extraHtml + projects.map(p => renderProject(p)).join('');
-            } catch (e) {
-                console.error(e);
-                container.innerHTML = `<div class="loading" style="color:#ef4444"><p>加载失败: ${e.message}</p></div>`;
-            }
-
-            const catRes = await fetch(`${API}/api/categories`);
-            const cats = await catRes.json();
-            document.getElementById('current-category').textContent = cats[category]?.name || category;
-        }
-
-
-        // ... (API and previous functions) ...
-
-        function renderProject(p) {
-            // Normalize Tags
-            let rawTags = p.ai_tags || p.topics || [];
-            if (typeof rawTags === 'string') {
-                try { rawTags = JSON.parse(rawTags); } catch (e) { rawTags = []; }
-            }
-            if (!Array.isArray(rawTags)) rawTags = [];
-            const uniqueTags = [...new Set(rawTags)].slice(0, 4);
-
-            // Remote/Live Logic
-            const isRemote = p.ai_rag_summary && p.ai_rag_summary.includes("GitHub Live");
-            const remoteTag = isRemote ? `<span style="background:#2ea043; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em; margin-left:8px; vertical-align: middle;">Live</span>` : '';
-
-            // Click Actions
-            // Only consider analyzed if done by the 120B model (or specifically marked as high quality)
-            const isHighQualityAnalysis = p.ai_model_name && p.ai_model_name.toLowerCase().includes('120b');
-            const isAnalyzed = !!p.ai_summary && isHighQualityAnalysis;
-
-            const cardClickAction = isAnalyzed
-                ? `onclick="showTutorial('${p.id}', '${(p.name || '').replace(/'/g, "\\'")}')"`
-                : `onclick="window.open('${p.url}', '_blank')"`;
-            const clickableClass = 'clickable';
-
-            // Generate Tags HTML
-            const tagsHtml = uniqueTags.length > 0 ? `
-                <div class="project-tags">
-                    ${uniqueTags.map(t => `<span class="tag" onclick="event.stopPropagation(); searchByTag('${t}')">${t}</span>`).join('')}
-                </div>` : '';
-
-            return `
-                <div class="project-card ${clickableClass}" ${cardClickAction}>
-                    <button class="delete-btn" onclick="event.stopPropagation(); deleteProject('${p.id}')" title="Delete">✕</button>
-                    ${isAnalyzed ? '<div class="analyzed-badge">✓ AI 120B</div>' : ''}
+                `,
+            )
+            .join("");
+
+          const keys = Object.keys(categories);
+          if (keys.includes("trending")) selectCategory("trending");
+          else if (keys.length) selectCategory(keys[0]);
+          
+          // Async fetch counts & calc analyzed stats
+          const tutorialIds = new Set();
+          for (const id of keys) {
+               fetch(`${API}/api/projects/${id}?limit=1000`)
+                .then(r => r.json())
+                .then(data => {
+                    const el = document.getElementById(`count-${id}`);
+                    if(el) el.textContent = data.length || 0;
                     
-                    <div class="project-header">
-                        <a href="${p.url}" target="_blank" class="project-name" onclick="event.stopPropagation()">${p.name}</a>
-                        ${remoteTag}
-                        <span class="project-stars" style="margin-left:auto; font-size:0.75rem; color:var(--text-secondary)">⭐ ${formatNumber(p.stars)}</span>
-                    </div>
-                    
-                    <p class="project-desc">${p.description || 'No description'}</p>
-                    
-                    ${tagsHtml}
-                    
-                    <div class="project-meta">
-                        <span style="display:flex;align-items:center">
-                            <span class="lang-dot" style="background: ${getLangColor(p.language)}"></span>
-                            ${p.language || 'Unknown'}
-                        </span>
-                        <span>🍴 ${formatNumber(p.forks)}</span>
-                        <a href="${p.url}" target="_blank" onclick="event.stopPropagation()" style="color:#58a6ff; text-decoration:none; display:flex; align-items:center; gap:4px" title="Open on GitHub">🔗 GitHub</a>
-                    </div>
+                    // Count with tutorials
+                    data.forEach(p => {
+                        if (p.ai_tutorial) tutorialIds.add(p.id);
+                    });
+                    // Update global stat
+                    document.getElementById("sidebar-stat-analyzed").textContent = tutorialIds.size;
+                }).catch(() => {});
+          }
 
-                    <!-- Detail Overlay on Hover -->
-                    <div class="card-overlay">
-                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--primary); margin-bottom: 0.5rem; font-weight: 600;">Details / Analysis</div>
-                        <div class="card-overlay-content">
-                            ${p.ai_rag_summary || p.ai_summary || p.description || 'No detailed analysis available.'}
-                        </div>
-                        ${isAnalyzed ?
-                    `<div style="font-size:0.7rem; color: #3fb950; display:flex; align-items:center; gap:4px">✨ 120B Advanced Analysis Available</div>` :
-                    `<div style="font-size:0.7rem; color: var(--text-secondary)">Basic Repo Info</div>`
-                }
-                    </div>
-                </div>
-            `;
+          loadStats();
+        } catch (e) {
+          console.error(e);
+          addLog("Init Error: " + e.message, "error");
         }
+      }
 
-        async function saveProject(url, btn) {
-            if (btn) {
-                btn.innerHTML = "⏳ Saving...";
-                btn.disabled = true;
-            }
-            try {
-                const res = await fetch('/api/project/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url })
-                });
-                const data = await res.json();
-                if (data.error) {
-                    alert("Error: " + data.error);
-                    if (btn) { btn.innerHTML = "❌ Retry"; btn.disabled = false; }
-                } else {
-                    if (btn) {
-                        btn.innerHTML = "✅ Saved";
-                        btn.style.background = "#238636";
-                        btn.style.color = "white";
-                    }
-                    addLog(`Saved project from ${url}`, "success");
-                }
-            } catch (e) {
-                alert("Error: " + e.message);
-                if (btn) { btn.innerHTML = "❌ Retry"; btn.disabled = false; }
-            }
+      async function selectCategory(category) {
+        currentCategory = category;
+        switchTab("view-dashboard"); // Force switch to dashboard
+        document
+          .querySelectorAll(".category-item")
+          .forEach((el) => el.classList.remove("active"));
+        const activeEl = document.getElementById(`cat-item-${category}`);
+        if (activeEl) activeEl.classList.add("active");
+
+        const container = document.getElementById("projects");
+        container.innerHTML =
+          '<div class="col-span-full flex justify-center py-20"><div class="animate-spin text-cyber-cyan material-icons-round text-4xl">data_usage</div></div>';
+
+        // Update Title
+        const catRes = await fetch(`${API}/api/categories`);
+        const cats = await catRes.json();
+        document.getElementById("current-category").textContent =
+          cats[category]?.name || category;
+
+        try {
+          const res = await fetch(`${API}/api/projects/${category}`);
+          const projects = await res.json();
+
+          if (!projects.length) {
+            container.innerHTML =
+              '<div class="col-span-full text-center text-gray-600 font-mono py-10">NO SIGNAL DETECTED.<br>Use "Ingest URL" to add data nodes.</div>';
+            return;
+          }
+
+          container.innerHTML = projects
+            .map((p) => renderProjectCard(p))
+            .join("");
+        } catch (e) {
+          container.innerHTML = `<div class="col-span-full text-red-500 font-mono">ERROR: ${e.message}</div>`;
         }
+      }
 
-        function searchByTag(tag) {
-            document.getElementById('search-input').value = tag;
-            performSearch();
-        }
+      function renderProjectCard(p) {
+        let tags = p.ai_tags || p.topics || [];
+        if (typeof tags === "string")
+          try {
+            tags = JSON.parse(tags);
+          } catch {
+            tags = [];
+          }
+        tags = [...new Set(tags)].slice(0, 3);
 
-        async function deleteProject(id) {
-            if (!confirm('确定要删除这个项目吗？')) return;
-            try {
-                const res = await fetch(`/api/project/delete/${id}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.error) {
-                    alert('删除失败: ' + data.error);
-                } else {
-                    addLog(`已删除项目 ${id}`, 'info');
-                    if (currentCategory) selectCategory(currentCategory);
-                }
-            } catch (e) {
-                alert('删除失败: ' + e.message);
-            }
-        }
+        const is120b =
+          p.ai_model_name && p.ai_model_name.toLowerCase().includes("120b");
+        const isAnalyzed = !!p.ai_summary && is120b;
+        const hasTutorial = !!p.ai_tutorial;
+        const summaryText = (p.ai_summary || p.description || "No description available.").replace(/"/g, '&quot;').replace(/'/g, "&#39;");
+        const topicsJson = JSON.stringify(tags).replace(/"/g, '&quot;');
 
-        async function startScan() {
-            await fetch(`${API}/api/scan`, { method: 'POST' });
-            addLog('Scan started...', 'info');
-            // Auto open windows if closed
-            const term = document.getElementById('terminal-window');
-            if (!term.classList.contains('active')) toggleWindow('terminal-window');
-        }
-
-        function exportData() {
-            window.location.href = '/api/export';
-        }
-
-
-        // --- News Sources Logic ---
-        async function loadNewsSources() {
-            try {
-                const res = await fetch(`${API}/api/news/sources`);
-                const data = await res.json();
-                renderSourcesBoard(data.sources || []);
-            } catch (e) {
-                console.error("Failed to load news sources", e);
-                document.getElementById('sources-board').innerHTML = `<div style="color:red">Failed to load sources</div>`;
-            }
-        }
-
-        function renderSourcesBoard(sources) {
-            const container = document.getElementById('sources-board');
-            if (!sources.length) {
-                container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem; background:var(--bg-card); border-radius:12px; color:var(--text-secondary);">
-                    <div style="font-size:2rem; margin-bottom:1rem;">📭</div>
-                    No sources added yet. Add one above!
-                </div>`;
-                return;
-            }
-
-            container.innerHTML = sources.map(s => `
-                <div class="project-card" style="display:flex; flex-direction:column;">
-                    <button class="delete-btn" style="display:flex;" onclick="deleteNewsSource(${s.id})" title="Delete">✕</button>
-                    <div class="project-header" style="margin-bottom:0.5rem;">
-                        <span style="font-size:1.1rem; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</span>
-                    </div>
-                    <div style="font-size:0.8rem; color:#3b82f6; margin-bottom:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        <a href="${s.url}" target="_blank" style="color:inherit; text-decoration:none;">${s.url}</a>
-                    </div>
-                    
-                    <div style="margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end;">
-                        <div style="font-size:0.7rem; color:var(--text-secondary);">
-                            ${s.last_scanned ? `Last scanned: ${new Date(s.last_scanned).toLocaleDateString()}` : 'Never scanned'}
-                        </div>
-                        <button onclick="scanSavedSource(${s.id}, this)" class="btn btn-secondary" style="padding:4px 12px; font-size:0.8rem;">
-                            🚀 Scan
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function addNewsSource() {
-            const nameInput = document.getElementById('new-source-name');
-            const urlInput = document.getElementById('new-source-url');
-            const name = nameInput.value.trim();
-            const url = urlInput.value.trim();
-
-            if (!name || !url) return alert("Name and URL required");
-
-            try {
-                const res = await fetch(`${API}/api/news/sources/add`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, url })
-                });
-                const data = await res.json();
-                if (data.error) alert(data.error);
-                else {
-                    nameInput.value = '';
-                    urlInput.value = '';
-                    loadNewsSources();
-                }
-            } catch (e) { alert(e.message); }
-        }
-
-        async function deleteNewsSource(id) {
-            if (!confirm("Remove this source?")) return;
-            await fetch(`${API}/api/news/sources/delete/${id}`, { method: 'DELETE' });
-            loadNewsSources();
-        }
-
-        async function scanSavedSource(id, btn) {
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳...";
-            btn.disabled = true;
-
-            const resultsContainer = document.getElementById('discovery-results-container');
-            const resultsGrid = document.getElementById('discovery-results');
-            resultsContainer.style.display = 'block';
-            resultsGrid.innerHTML = `<div class="spinner" style="margin:2rem auto;"></div><div style="text-align:center;">Scanning ${id}...</div>`;
-            // Scroll to results
-            resultsContainer.scrollIntoView({ behavior: 'smooth' });
-
-            try {
-                const res = await fetch(`${API}/api/news/sources/scan/${id}`, { method: 'POST' });
-                const data = await res.json();
-                renderScanResults(data);
-                loadNewsSources(); // Refresh last scanned time
-            } catch (e) {
-                resultsGrid.innerHTML = `<div style="color:#ef4444; text-align:center;">Scan failed: ${e.message}</div>`;
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-
-        function renderScanResults(data) {
-            const resultsContainer = document.getElementById('discovery-results-container');
-            const resultsGrid = document.getElementById('discovery-results');
-            const countLabel = document.getElementById('discovery-count');
-
-            resultsContainer.style.display = 'block';
-
-            if (data.results && data.results.length > 0) {
-                countLabel.textContent = `${data.results.length} new`;
-                resultsGrid.innerHTML = `
-                    <div class="projects-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1rem;">
-                        ${data.results.map(p => renderProject(p)).join('')}
-                    </div>
-                `;
-            } else {
-                countLabel.textContent = "0 new";
-                resultsGrid.innerHTML = `<div style="text-align:center; padding:2rem; background:var(--bg-card); border-radius:8px;">No new GitHub projects found in this source.</div>`;
-            }
-        }
-
-        async function scanNewsSource() {
-            const urlInput = document.getElementById('discovery-url');
-            const url = urlInput.value.trim();
-            if (!url) return alert("Please enter a URL");
-
-            const btn = document.querySelector('#discovery-url + button');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳";
-            btn.disabled = true;
-
-            const resultsContainer = document.getElementById('discovery-results-container');
-            const resultsGrid = document.getElementById('discovery-results');
-            resultsContainer.style.display = 'block';
-            resultsGrid.innerHTML = `<div class="spinner" style="margin:2rem auto;"></div><div style="text-align:center;">Parsing page...</div>`;
-
-            try {
-                const res = await fetch(`${API}/api/news/scan`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url })
-                });
-                const data = await res.json();
-                renderScanResults(data);
-            } catch (e) {
-                resultsGrid.innerHTML = `<div style="color:#ef4444; text-align:center;">Scan failed: ${e.message}</div>`;
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-
-        async function promptAddProject() {
-            const url = prompt("Enter GitHub Repository URL (e.g. https://github.com/owner/repo):");
-            if (!url) return;
-
-            addLog(`Adding project from ${url}...`, "info");
-            try {
-                const res = await fetch('/api/project/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url })
-                });
-                const data = await res.json();
-
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    addLog(`Added ${data.project}. It will appear shortly/after analysis.`, "success");
-                    // Refresh current view
-                    if (currentCategory) selectCategory(currentCategory);
-                }
-            } catch (e) {
-                alert('Request failed: ' + e.message);
-            }
-        }
-
-        async function confirmReset() {
-            if (!confirm("⚠️ DANGER: This will delete ALL database records and scan history. Are you sure?")) return;
-            if (!confirm("Are you really sure? This cannot be undone.")) return;
-
-            try {
-                const res = await fetch('/api/reset', { method: 'POST' });
-                const data = await res.json();
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    alert('System reset successfully. Page will reload.');
-                    location.reload();
-                }
-            } catch (e) {
-                alert('Reset failed: ' + e.message);
-            }
-        }
-
-        let progressInterval = null;
-
-        async function startBatchAnalysis() {
-            if (!confirm("开始批量分析所有待处理项目？将使用 80B 模型生成深度教程。")) return;
-
-            try {
-                const res = await fetch('/api/analyze_all', { method: 'POST' });
-                const data = await res.json();
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    // Show progress bar and start polling
-                    document.getElementById('progress-container').style.display = 'block';
-                    startProgressPolling();
-
-                    // Auto open terminal
-                    const term = document.getElementById('terminal-window');
-                    if (!term.classList.contains('active')) toggleWindow('terminal-window');
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Failed to start analysis');
-            }
-        }
-
-        async function triggerNewsScan() {
-            try {
-                const res = await fetch(`${API}/api/scan/news`, { method: 'POST' });
-                const data = await res.json();
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    addLog('Started news discovery scan...', 'info');
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Failed to start news scan');
-            }
-        }
-
-        function startProgressPolling() {
-            progressInterval = setInterval(async () => {
-                try {
-                    const res = await fetch('/api/progress');
-                    const data = await res.json();
-
-                    const total = data.total || 0;
-                    const done = data.done || 0;
-                    const percent = total > 0 ? (done / total * 100) : 0;
-
-                    // Show progress if running or data indicates work
-                    if (data.done < data.total) { // Simple check, or check explicit 'is_running' if available, but this works
-                        document.getElementById('progress-container').style.display = 'flex';
-                        document.getElementById('progress-bar').style.width = `${percent}%`;
-                        document.getElementById('progress-text').innerHTML = `
-                            ${data.current} (${data.done}/${data.total})
-                            <button onclick="stopTask()" style="margin-left:1rem; padding:2px 8px; background:var(--bg-secondary); border:1px solid var(--border); color:#ef4444; border-radius:4px; cursor:pointer; font-size:0.75rem;">⏹ Stop</button>
-                        `;
-                    } else if (total > 0 && done >= total) {
-                        // Complete
-                        document.getElementById('progress-text').textContent = "Completed!";
-                        setTimeout(() => {
-                            document.getElementById('progress-container').style.display = 'none';
-                            clearInterval(progressInterval);
-                            loadStats(); // Refresh stats
-                        }, 2000);
-                    }
-                } catch (e) {
-                    console.error('Progress poll error:', e);
-                }
-            }, 1500);
-        }
-
-        async function stopTask() {
-            if (!confirm('Are you sure you want to stop the current analysis?')) return;
-            addLog('Stopping task...', 'warning');
-            try {
-                await fetch(`${API}/api/stop`, { method: 'POST' });
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        async function analyzeProject(id) {
-            addLog(`Analyzing ${id}...`, 'info');
-            await fetch(`${API}/api/analyze/${id}`, { method: 'POST' });
-            if (currentCategory) selectCategory(currentCategory);
-        }
-
-        async function showTutorial(id, name) {
-            try {
-                document.getElementById('modal-title').textContent = name;
-                document.getElementById('tutorial-modal').classList.add('active');
-                const contentEl = document.getElementById('tutorial-content');
-
-                // 1. Optimistic Render: Show Summary Immediately if available
-                // We need to find the project object to get the summary. 
-                // Since we only have ID, we can try to find it in the DOM or rely on the fact that if card is clickable, summary exists.
-                // But 'p' is not passed here. Let's just retrieve it from the cache or DOM if needed, 
-                // BUT for now, let's just show a better loading state.
-
-                // Better approach: Let's fetch the local DB info first (fast) then the deep tutorial.
-                // But wait, the click event already had the project 'p' object in scope when renderProject ran. 
-                // We can't easily access it here without passing it.
-                // Let's just show a nice "Generating" UI for now, but improving the text.
-
-                contentEl.innerHTML = `
-                <div style="padding:2rem; text-align:center">
-                    <div class="spinner"></div>
-                    <h3 style="margin-top:1rem;color:var(--text-primary)">Creating Deep Tutorial...</h3>
-                    <p style="color:var(--text-secondary); max-width:400px; margin:0 auto; margin-top:0.5rem">
-                        Using <strong>Qwen-80B</strong> to analyze architecture, code, and use cases.
-                        <br>This may take 1-2 minutes for high-quality output.
-                    </p>
-                </div>
-                `;
-
-                // Fetch tutorial data (Server will generate if missing)
-                const res = await fetch(`${API}/api/tutorial/${id}`);
-                const data = await res.json();
-
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
-                let contentHtml = '';
-                const rawContent = data.tutorial || '暂无教程';
-
-                // Check if marked is available
-                if (typeof marked !== 'undefined') {
-                    try {
-                        contentHtml = marked.parse(rawContent);
-                    } catch (err) {
-                        console.error('Markdown parse error:', err);
-                        contentHtml = `<pre style="white-space:pre-wrap; font-family:sans-serif">${rawContent}</pre>`;
-                    }
-                } else {
-                    // Fallback if marked is not loaded (e.g. CDN blocked)
-                    contentHtml = `<div style="padding:1rem; background:rgba(255,165,0,0.1); border-left:4px solid orange; margin-bottom:1rem;">Note: Markdown renderer failed to load. Showing raw text.</div>
-                                   <pre style="white-wrap:pre-wrap; font-family:inherit; color:var(--text-primary)">${rawContent}</pre>`;
-                }
-
-                contentEl.innerHTML = `<div class="markdown-content" style="line-height:1.8; font-size:0.95rem;">${contentHtml}</div>`;
-
-            } catch (e) {
-                console.error(e);
-                document.getElementById('tutorial-content').innerHTML = `<div style="color:#ef4444; padding:2rem; text-align:center">
-                    <h3>Failed to load tutorial</h3>
-                    <p>${e.message}</p>
-                </div>`;
-            }
-        }
-
-        function closeModal() { document.getElementById('tutorial-modal').classList.remove('active'); }
-        async function openSettings() {
-            try {
-                const res = await fetch(`${API}/api/settings`);
-                const data = await res.json();
-                document.getElementById('setting-scan-time').value = data.scan_time || '02:00';
-                document.getElementById('settings-modal').classList.add('active');
-            } catch (e) {
-                console.error(e);
-                alert('Failed to load settings');
-            }
-        }
-
-        function closeSettings() {
-            document.getElementById('settings-modal').classList.remove('active');
-        }
-
-        function closeSettingsIfOutside(e) {
-            if (e.target.id === 'settings-modal') closeSettings();
-        }
-
-        async function saveSettings() {
-            const time = document.getElementById('setting-scan-time').value;
-            if (!time) return;
-
-            try {
-                const res = await fetch(`${API}/api/settings`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ scan_time: time })
-                });
-                const data = await res.json();
-                if (data.status === 'saved') {
-                    addLog(`Settings saved. Daily scan set to ${time}`, 'success');
-                    closeSettings();
-                } else {
-                    alert('Error saving settings');
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Failed to save settings');
-            }
-        }
-
-        function refreshCategory() { if (currentCategory) selectCategory(currentCategory); }
-
-        // SSE Logs & Agent Status
-        const eventSource = new EventSource(`${API}/api/logs`);
-        eventSource.onmessage = (e) => {
-            const data = JSON.parse(e.data);
-            if (data.level !== 'ping') {
-                addLog(data.message, data.level);
-                updateAgentStatus(data.message);
-
-                // Update Search Loading Text
-                if (isSearching) {
-                    const statusEl = document.getElementById('search-status-text');
-                    if (statusEl) {
-                        statusEl.textContent = data.message;
-                    }
-                }
-            }
+        // Language Color
+        const langColors = {
+          Python: "#3572A5",
+          JavaScript: "#f1e05a",
+          TypeScript: "#3178c6",
+          Java: "#b07219",
+          Go: "#00ADD8",
+          Rust: "#dea584",
         };
+        const langColor = langColors[p.language] || "#666";
 
-        let crawlerTimeout;
-        let analyzerTimeout;
+        return `
+                <div class="group relative bg-[#18181b]/80 border border-cyber-border rounded-lg overflow-hidden transition-all hover:-translate-y-1 hover:border-cyber-cyan hover:shadow-neon-cyan/20 backdrop-blur-sm cursor-pointer"
+                     onclick="window.open('${p.url}', '_blank')"
+                     onmouseenter="showTooltip(event, '${(p.name || "Unknown").replace(/'/g, "\\'")}', '${p.language || "N/A"}', '${summaryText}', '${topicsJson}')"
+                     onmouseleave="hideTooltip()">
+                    
+                    ${isAnalyzed ? `<div class="absolute top-2 right-2 z-20 bg-cyber-green text-black text-[10px] font-bold px-2 py-0.5 rounded-sm shadow-neon-green flex items-center gap-1"><span>✨</span> 120B</div>` : ""}
+                    <button class="absolute top-2 left-2 z-20 bg-red-500/80 text-white w-6 h-6 rounded-full items-center justify-center hidden group-hover:block" onclick="event.stopPropagation(); deleteProject('${p.id}')">✕</button>
+                    
+                    <div class="p-5 h-full flex flex-col">
+                        <div class="flex items-start justify-between mb-3">
+                             <h3 class="font-mono font-bold text-lg text-white group-hover:text-cyber-cyan truncate pr-2 w-full">${p.name}</h3>
+                        </div>
+                        
+                        <p class="text-xs text-gray-400 mb-4 line-clamp-3 leading-relaxed flex-1 font-sans">
+                            ${p.ai_summary || p.description || "No description available."}
+                        </p>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${tags.map((t) => `<span class="text-[10px] font-mono border border-cyber-border text-gray-500 px-2 py-0.5 rounded hover:border-cyber-cyan hover:text-cyber-cyan transition-colors" onclick="event.stopPropagation(); searchByTag('${t}')">${t}</span>`).join("")}
+                        </div>
+                        
+                        <div class="flex items-center justify-between pt-3 border-t border-cyber-border/50 text-xs font-mono text-gray-500">
+                             <div class="flex items-center gap-1.5">
+                                 <span class="w-2 h-2 rounded-full" style="background:${langColor}"></span>
+                                 ${p.language || "N/A"}
+                             </div>
+                             <div class="flex items-center gap-3">
+                                 <span class="flex items-center gap-1">⭐ ${formatNumber(p.stars)}</span>
+                                 ${hasTutorial ? 
+                                    `<button onclick="event.stopPropagation(); showTutorial('${p.id}', '${(p.name || "").replace(/'/g, "\\'")}')" class="bg-cyber-magenta/20 hover:bg-cyber-magenta text-cyber-magenta hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition-colors flex items-center gap-1"><span class="material-icons-round text-[10px]">school</span> TUTORIAL</button>` 
+                                    : `<span class="flex items-center gap-1">🍴 ${formatNumber(p.forks)}</span>`
+                                 }
+                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hover Scanline Overlay -->
+                    <div class="absolute inset-0 bg-cyber-cyan/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none scanlines"></div>
+                </div>
+             `;
+      }
 
-        function updateAgentStatus(msg) {
-            const master = document.getElementById('agent-master');
-            const crawler = document.getElementById('agent-crawler');
-            const analyzer = document.getElementById('agent-analyzer');
+      // --- Tooltip Logic ---
+      function showTooltip(e, name, lang, summary, topicsStr) {
+          const t = document.getElementById("hover-summary-tooltip");
+          
+          let topicsOps = "";
+          try {
+             const tops = JSON.parse(topicsStr);
+             topicsOps = tops.slice(0, 3).map(tag => `<span class="text-cyber-magenta">#${tag}</span>`).join(" ");
+          } catch(e) {}
 
-            if (msg.includes('Scanning') || msg.includes('Crawling') || msg.includes('Found') || msg.includes('Fetching')) {
-                setAgentState(crawler, msg.replace(/(Scanning|Crawling):? /, ''), 'active');
-                setAgentState(master, 'Monitoring', 'active');
+          t.innerHTML = `
+            <div class="flex justify-between items-center border-b border-cyber-border pb-2 mb-2">
+                <span class="text-cyber-cyan font-bold text-sm tracking-wide">${name}</span>
+                <span class="text-[10px] bg-cyber-border px-1 rounded text-gray-400">${lang}</span>
+            </div>
+            <div class="text-xs text-gray-300 leading-relaxed font-sans mb-3">
+                ${summary.length > 200 ? summary.substring(0, 200) + "..." : summary}
+            </div>
+            <div class="text-[10px] font-mono flex gap-2">
+                ${topicsOps}
+            </div>
+          `;
+          
+          t.style.display = "block";
+          moveTooltip(e);
+      }
+      
+      function moveTooltip(e) {
+          const t = document.getElementById("hover-summary-tooltip");
+          if(t.style.display === 'block') {
+             // Offset to not cover cursor
+             const x = e.clientX + 20; 
+             const y = e.clientY + 20;
+             
+             // Boundary check
+             const rect = t.getBoundingClientRect();
+             const winW = window.innerWidth;
+             const winH = window.innerHeight;
+             
+             let finalX = x;
+             let finalY = y;
+             
+             if (x + rect.width > winW) finalX = e.clientX - rect.width - 10;
+             if (y + rect.height > winH) finalY = e.clientY - rect.height - 10;
+             
+             t.style.left = finalX + "px";
+             t.style.top = finalY + "px";
+          }
+      }
 
-                if (crawlerTimeout) clearTimeout(crawlerTimeout);
-                crawlerTimeout = setTimeout(() => setAgentState(crawler, 'Idle'), 5000);
-            } else if (msg.includes('Analyzing') || msg.includes('Analyzed') || msg.includes('Generating') || msg.includes('分析') || msg.includes('教程') || msg.includes('截图') || msg.includes('OCR')) {
-                // Extract a cleaner status message
-                let status = msg;
-                if (status.length > 30) status = "Processing...";
-                if (msg.includes('分析')) status = "Analyzing...";
-                if (msg.includes('教程')) status = "Writing Tutorial...";
-                if (msg.includes('截图') || msg.includes('OCR')) status = "Vision Analysis...";
+      function hideTooltip() {
+          document.getElementById("hover-summary-tooltip").style.display = "none";
+      }
+      
+      // Attach move listener globally for smoother tracking when active
+      document.addEventListener('mousemove', moveTooltip);
 
-                setAgentState(analyzer, status, 'active');
-                setAgentState(master, 'Monitoring', 'active');
+      // --- Search & Chat ---
 
-                // Longer timeout for analysis tasks
-                if (analyzerTimeout) clearTimeout(analyzerTimeout);
-                analyzerTimeout = setTimeout(() => setAgentState(analyzer, 'Idle'), 60000);
-            }
+      function searchByTag(tag) {
+        switchTab("view-search");
+        handleChatSubmit("direct", tag);
+      }
+
+      function appendChat(role, text) {
+        const historyDiv = document.getElementById("chat-history");
+        const isUser = role === "user";
+
+        const html = `
+                <div class="flex w-full ${isUser ? "justify-end" : "justify-start"}">
+                    <div class="${isUser ? "bg-cyber-dim border-cyber-cyan text-cyber-cyan" : "bg-cyber-panel border-gray-700 text-gray-300"} border px-4 py-3 rounded-lg max-w-[80%] font-mono text-sm shadow-lg mb-2">
+                        ${isUser ? "" : '<span class="text-cyber-green mr-2">></span>'}
+                        ${typeof marked !== "undefined" && !isUser ? marked.parse(text) : text}
+                    </div>
+                </div>
+            `;
+        historyDiv.insertAdjacentHTML("beforeend", html);
+        historyDiv.scrollTop = historyDiv.scrollHeight;
+        chatHistory.push({ role, content: text });
+      }
+
+      async function handleChatSubmit(
+        mode = "conversational",
+        manualText = null,
+      ) {
+        const input = document.getElementById("chat-input");
+        const text = manualText || input.value.trim();
+        if (!text) return;
+        if (!manualText) input.value = "";
+
+        appendChat("user", text);
+
+        if (mode === "direct") {
+          performHybridSearch(text);
+          return;
         }
 
-        function setAgentState(el, text, state = '') {
-            if (!el) return;
-            const statusEl = el.querySelector('.agent-status');
-            const btn = el.querySelector('.agent-btn');
+        // Conversational logic
+        const id = "typing-" + Date.now();
+        document
+          .getElementById("chat-history")
+          .insertAdjacentHTML(
+            "beforeend",
+            `<div id="${id}" class="text-gray-600 text-xs font-mono animate-pulse ml-2">AGI_THINKING...</div>`,
+          );
 
-            if (statusEl) statusEl.textContent = text;
+        try {
+          const res = await fetch(`${API}/api/agent/refine`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ history: chatHistory }),
+          });
+          const data = await res.json();
+          document.getElementById(id).remove();
 
-            if (state === 'active') {
-                el.classList.add('active');
-                if (statusEl) statusEl.style.color = '#3fb950';
-                if (btn) btn.style.display = 'none';
+          if (data.action === "question") {
+            appendChat("assistant", data.content);
+          } else {
+            appendChat(
+              "assistant",
+              `Target Identified. Executing Search: **${data.content}**`,
+            );
+            performHybridSearch(data.content);
+          }
+        } catch (e) {
+          document.getElementById(id).innerHTML = "ERR: LINK_LOST";
+        }
+      }
+
+      async function performHybridSearch(query) {
+        const insight = document.getElementById("ai-insight-block");
+        const grid = document.getElementById("results-grid");
+
+        grid.innerHTML = "";
+        insight.classList.remove("hidden");
+        insight.innerHTML = `<div class="flex items-center gap-3 text-cyber-cyan font-mono"><span class="animate-spin material-icons-round">radar</span> SCANNING LOCAL & REMOTE NODES...</div>`;
+
+        let allProjects = [];
+        isSearching = true;
+        const ids = new Set();
+
+        function renderBatch(projects) {
+          const newP = projects.filter((p) => !ids.has(p.id));
+          newP.forEach((p) => ids.add(p.id));
+          allProjects = [...allProjects, ...newP];
+          if (newP.length)
+            grid.insertAdjacentHTML(
+              "beforeend",
+              newP.map((p) => renderProjectCard(p)).join(""),
+            );
+          insight.innerHTML = `<div class="font-mono text-sm text-gray-400">NODES FOUND: <span class="text-cyber-green">${allProjects.length}</span> // AWAITING NEURAL ANALYSIS...</div>`;
+        }
+
+        // 1. Local
+        fetch(`${API}/api/search/local`, {
+          method: "POST",
+          body: JSON.stringify({ query }),
+          headers: { "Content-Type": "application/json" },
+        })
+          .then((r) => r.json())
+          .then((d) => renderBatch(d.results));
+
+        // 2. Remote
+        fetch(`${API}/api/search/remote`, {
+          method: "POST",
+          body: JSON.stringify({ query }),
+          headers: { "Content-Type": "application/json" },
+        })
+          .then((r) => r.json())
+          .then((d) => {
+            renderBatch(d.results);
+            // 3. Recommendation
+            if (allProjects.length)
+              return fetch(`${API}/api/search/recommend`, {
+                method: "POST",
+                body: JSON.stringify({
+                  query,
+                  projects: allProjects.slice(0, 10),
+                }),
+                headers: { "Content-Type": "application/json" },
+              });
+          })
+          .then((r) => (r ? r.json() : null))
+          .then((d) => {
+            if (d && d.recommendation) {
+              insight.innerHTML = `
+                            <div class="flex items-center gap-2 mb-2 text-cyber-magenta font-bold font-display uppercase tracking-wider"><span class="material-icons-round">psychology</span> Neural Insight</div>
+                            <div class="markdown-content text-sm text-gray-300">${marked.parse(d.recommendation)}</div>
+                        `;
+            }
+          })
+          .finally(() => (isSearching = false));
+      }
+
+      // --- Actions & Helpers ---
+
+      async function deleteProject(id) {
+        if (!confirm("CONFIRM DELETION: Isolate and purge this node?")) return;
+        await fetch(`/api/project/delete/${id}`, { method: "DELETE" });
+        if (currentCategory) selectCategory(currentCategory);
+      }
+
+      async function promptAddProject() {
+        const url = prompt("INPUT TARGET URL:");
+        if (!url) return;
+        addLog(`Ingesting ${url}...`, "info");
+        const res = await fetch("/api/project/add", {
+          method: "POST",
+          body: JSON.stringify({ url }),
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await res.json();
+        if (data.error) alert(data.error);
+        else {
+          addLog(`Node added: ${data.project}`, "success");
+          if (currentCategory) selectCategory(currentCategory);
+        }
+      }
+
+      async function createTutorial(id, name) {
+        /* Logic handled in showTutorial */
+      }
+
+      async function showTutorial(id, name) {
+        const modal = document.getElementById("tutorial-modal");
+        const title = document.getElementById("modal-title");
+        const content = document.getElementById("tutorial-content");
+
+        // Force open - simpler logic
+        modal.classList.add("active");
+        // Ensure z-index is top
+        modal.style.zIndex = 1000;
+        
+        title.textContent = "ANALYSIS_MATRIX: " + name;
+        
+        // Loading State
+        content.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-cyber-cyan">
+                    <span class="material-icons-round text-5xl animate-spin mb-4">donut_large</span>
+                    <div class="font-mono text-lg animate-pulse">DECRYPTING TUTORIAL DATA...</div>
+                    <div class="text-xs text-gray-500 mt-2 font-mono">MODEL: Qwen-Max // LAYER: Pedagogical Extraction</div>
+                </div>
+            `;
+            
+        try {
+            const res = await fetch(`${API}/api/project/${id}`);
+            const p = await res.json();
+            
+            if (p.ai_tutorial) {
+                 content.innerHTML = `
+                    <div class="markdown-content text-sm text-gray-300 font-sans leading-relaxed">
+                        ${marked.parse(p.ai_tutorial)}
+                    </div>
+                 `;
             } else {
-                el.classList.remove('active');
-                if (statusEl) statusEl.style.color = '#8b949e';
-                if (btn) btn.style.display = 'block';
+                 content.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-gray-500 font-mono">
+                        <span class="material-icons-round text-4xl mb-4">no_sim</span>
+                        <div>NO TUTORIAL DATA FOUND</div>
+                    </div>
+                 `;
             }
+        } catch(e) {
+             content.innerHTML = `<div class="text-red-500 font-mono">ERROR: ${e.message}</div>`;
         }
+      }
+      function closeModal() {
+        document.getElementById("tutorial-modal").classList.remove("active");
+      }
 
-        function addLog(message, level = 'info') {
-            const panel = document.getElementById('terminal-content');
-            const time = new Date().toLocaleTimeString();
+      async function startScan() {
+        await fetch(`${API}/api/scan`, { method: "POST" });
+        addLog("SCAN_SEQUENCE_INITIATED", "info");
+        toggleWindow("terminal-window");
+      }
 
-            let color = '#58a6ff';
-            let icon = 'ℹ️';
+      async function startBatchAnalysis() {
+        if (!confirm("INITIATE BATCH ANALYSIS? Heavy compute load expected."))
+          return;
+        await fetch("/api/analyze_all", { method: "POST" });
+        document.getElementById("progress-container").style.display = "block";
+        startPolling();
+      }
 
-            if (level === 'error') { color = '#f85149'; icon = '❌'; }
-            if (level === 'success') { color = '#3fb950'; icon = '✅'; }
-            if (level === 'warning') { color = '#f59e0b'; icon = '⚠️'; }
+      let poolInt;
+      function startPolling() {
+        poolInt = setInterval(async () => {
+          const r = await fetch("/api/progress");
+          const d = await r.json();
+          if (d.done < d.total) {
+            document.getElementById("progress-container").style.display =
+              "block";
+            document.getElementById("progress-bar").style.width =
+              (d.done / d.total) * 100 + "%";
+            document.getElementById("progress-text").textContent =
+              `${d.done}/${d.total}`;
+          } else {
+            document.getElementById("progress-container").style.display =
+              "none";
+            clearInterval(poolInt);
+            loadStats();
+          }
+        }, 1500);
+      }
 
-            // Format message highlights
-            const formattedMsg = message
-                .replace(/\[\d+\/\d+\]/, match => `<span style="color:#a371f7">${match}</span>`)
-                .replace(/(Analyzing|Scanning|Crawling)/, match => `<span style="font-weight:600; color:#fff">${match}</span>`);
+      async function loadStats() {
+        const [s, p] = await Promise.all([
+          fetch(`${API}/api/stats`).then((r) => r.json()),
+          fetch(`${API}/api/pending`).then((r) => r.json()),
+        ]);
+        document.getElementById("sidebar-stat-total").textContent =
+          s.total_projects;
+        // Analyzed count is now handled by loadCategories filtering for tutorials
+        // document.getElementById("sidebar-stat-analyzed").textContent = s.analyzed_projects; 
+        document.getElementById("sidebar-stat-stars").textContent =
+          formatNumber(s.total_stars);
+        document.getElementById("sidebar-stat-pending").textContent = p.pending;
+      }
 
-            const div = document.createElement('div');
-            div.className = 'log-entry';
-            div.innerHTML = `<span class="log-time">${time}</span> <span>${icon}</span> <span style="color:${color}">${formattedMsg}</span>`;
+      function addLog(msg, type) {
+        const t = document.getElementById("terminal-content");
+        const colors = {
+          info: "text-cyber-cyan",
+          success: "text-cyber-green",
+          error: "text-red-500",
+          warning: "text-yellow-500",
+        };
+        const time = new Date().toLocaleTimeString();
+        const html = `
+                <div class="log-entry font-mono text-[10px] flex gap-2">
+                    <span class="text-gray-600">[${time}]</span>
+                    <span class="${colors[type] || "text-white"}">${msg}</span>
+                </div>
+            `;
+        t.insertAdjacentHTML("beforeend", html);
+        t.scrollTop = t.scrollHeight;
+      }
 
-            panel.appendChild(div);
-            panel.scrollTop = panel.scrollHeight;
+      function formatNumber(n) {
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+        if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+        return n;
+      }
+
+      // Draggable
+      function makeDraggable(el) {
+        const h = el.querySelector(".window-header");
+        let isDown = false,
+          offset = [0, 0];
+        h.addEventListener("mousedown", (e) => {
+          isDown = true;
+          offset = [el.offsetLeft - e.clientX, el.offsetTop - e.clientY];
+          el.style.zIndex = 100;
+        });
+        document.addEventListener("mouseup", () => (isDown = false));
+        document.addEventListener("mousemove", (e) => {
+          if (!isDown) return;
+          el.style.left = e.clientX + offset[0] + "px";
+          el.style.top = e.clientY + offset[1] + "px";
+        });
+      }
+      document.querySelectorAll(".floating-window").forEach(makeDraggable);
+
+      // News Sources (Stubbed for brevity but logic is same)
+      async function loadNewsSources() {
+        const r = await fetch(`${API}/api/news/sources`);
+        const d = await r.json();
+        const b = document.getElementById("sources-board");
+        if (!d.sources.length)
+          b.innerHTML =
+            '<div class="col-span-full text-center text-gray-700 font-mono py-10">NO SIGNAL SOURCES DETECTED</div>';
+        else
+          b.innerHTML = d.sources
+            .map(
+              (s) => `
+                <div class="bg-cyber-black border border-cyber-border p-3 rounded-sm flex flex-col gap-2">
+                    <div class="flex justify-between items-start">
+                        <div class="text-white font-bold text-sm truncate">${s.name}</div>
+                        <button onclick="deleteNewsSource(${s.id})" class="text-red-900 hover:text-red-500">✕</button>
+                    </div>
+                    <div class="text-[10px] text-cyber-cyan truncate">${s.url}</div>
+                    <button onclick="scanSavedSource(${s.id}, this)" class="mt-2 bg-cyber-dim hover:bg-cyber-cyan hover:text-black text-cyber-cyan text-xs py-1 rounded-sm transition-colors uppercase font-mono">Initiate Scan</button>
+                </div>
+             `,
+            )
+            .join("");
+      }
+
+      async function addNewsSource() {
+        const name = document.getElementById("new-source-name").value;
+        const url = document.getElementById("new-source-url").value;
+        if (!name || !url) return;
+        await fetch(`${API}/api/news/sources/add`, {
+          method: "POST",
+          body: JSON.stringify({ name, url }),
+          headers: { "Content-Type": "application/json" },
+        });
+        loadNewsSources();
+        document.getElementById("new-source-name").value = "";
+        document.getElementById("new-source-url").value = "";
+      }
+
+      async function deleteNewsSource(id) {
+        if (!confirm("Purge Source Node?")) return;
+        await fetch(`${API}/api/news/sources/delete/${id}`, {
+          method: "DELETE",
+        });
+        loadNewsSources();
+      }
+
+      async function scanSavedSource(id, btn) {
+        btn.textContent = "scanning...";
+        const r = await fetch(`${API}/api/news/sources/scan/${id}`, {
+          method: "POST",
+        });
+        const d = await r.json();
+        btn.textContent = "Done";
+        if (d.results.length) {
+          const c = document.getElementById("discovery-results-container");
+          c.classList.remove("hidden");
+          document.getElementById("discovery-results").innerHTML = d.results
+            .map((p) => renderProjectCard(p))
+            .join("");
         }
+      }
 
-        function formatNumber(n) {
-            if (!n) return '0';
-            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-            return n.toString();
+      async function scanNewsSource() {
+        const url = document.getElementById("discovery-url").value;
+        if (!url) return;
+        const r = await fetch(`${API}/api/news/scan`, {
+          method: "POST",
+          body: JSON.stringify({ url }),
+          headers: { "Content-Type": "application/json" },
+        });
+        const d = await r.json();
+        const c = document.getElementById("discovery-results-container");
+        c.classList.remove("hidden");
+        document.getElementById("discovery-results").innerHTML = d.results
+          .map((p) => renderProjectCard(p))
+          .join("");
+        document.getElementById("discovery-count").textContent =
+          d.results.length;
+      }
+
+      // Init
+      loadCategories();
+      // SSE
+      const evt = new EventSource(`${API}/api/logs`);
+      evt.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.level !== "ping") {
+          addLog(d.message, d.level);
+          // Simple status update for agents
+          const t = d.message;
+          if (t.includes("Crawling"))
+            document.querySelector("#agent-crawler .agent-status").textContent =
+              "ACTIVE";
+          if (t.includes("Analyzing"))
+            document.querySelector(
+              "#agent-analyzer .agent-status",
+            ).textContent = "COMPUTING";
+          setTimeout(() => {
+            document.querySelector("#agent-crawler .agent-status").textContent =
+              "IDLE";
+            document.querySelector(
+              "#agent-analyzer .agent-status",
+            ).textContent = "IDLE";
+          }, 5000);
         }
-
-        function getLangColor(lang) {
-            const colors = { 'Python': '#3572A5', 'JavaScript': '#f1e05a', 'TypeScript': '#3178c6', 'Java': '#b07219', 'Go': '#00ADD8', 'Rust': '#dea584' };
-            return colors[lang] || '#8b949e';
-        }
-
-        loadCategories();
+      };
     </script>
-</body>
-
-
+  </body>
 </html>
