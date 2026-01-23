@@ -4,10 +4,10 @@ import traceback
 import time
 from datetime import datetime
 from typing import Dict, Callable
-from database import Database
-from crawler import CrawlerAgent
-from analyzer import AnalyzerAgent, ContentAgent
-from config import CATEGORIES, DISCOVERY_URLS
+from .database import Database
+from .crawler import CrawlerAgent
+from .analyzer import AnalyzerAgent, ContentAgent
+from .config import CATEGORIES, DISCOVERY_URLS
 
 class MasterAgent:
     """主控 Agent - 调度所有子任务"""

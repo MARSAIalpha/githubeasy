@@ -4,7 +4,7 @@ import threading
 from datetime import datetime
 from typing import Optional, List, Dict
 from supabase import create_client, Client
-from config import SUPABASE_URL, SUPABASE_KEY
+from .config import SUPABASE_URL, SUPABASE_KEY
 
 class Database:
     """Database layer using Supabase PostgreSQL"""

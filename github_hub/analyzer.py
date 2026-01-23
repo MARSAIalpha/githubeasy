@@ -2,7 +2,7 @@
 from openai import OpenAI
 from typing import Dict, List, Optional
 import json
-from config import LM_STUDIO_BASE, LM_STUDIO_KEY, MODELS
+from .config import LM_STUDIO_BASE, LM_STUDIO_KEY, MODELS
 
 class AnalyzerAgent:
     """AI 分析 Agent - 使用本地 LM Studio 模型"""

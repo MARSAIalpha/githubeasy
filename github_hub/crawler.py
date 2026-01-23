@@ -6,7 +6,7 @@ import random
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
-from config import GITHUB_API, GITHUB_TOKEN, CATEGORIES, SCAN_CONFIG
+from .config import GITHUB_API, GITHUB_TOKEN, CATEGORIES, SCAN_CONFIG
 import os
 
 try:

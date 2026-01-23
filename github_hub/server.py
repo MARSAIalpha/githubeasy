@@ -4,8 +4,8 @@ from flask_cors import CORS
 import json
 import queue
 import threading
-from master import MasterAgent
-from config import CATEGORIES
+from .master import MasterAgent
+from .config import CATEGORIES
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
